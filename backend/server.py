@@ -4687,7 +4687,17 @@ async def _notify_order_created(order: dict, settings: dict, user_doc: dict):
 
     # ---- Customer SMS (Twilio) ----
     try:
-        body = (f"{BRAND_NAME}: Order #{ref} confirmed!\n{items_txt}\nTotal CA${total:.2f}\n{pay_note}\nInvoice: {invoice_url}")
+        first = (cust or "there").split()[0]
+        body = (
+            f"Hi {first}! Thank you for ordering with {BRAND_NAME}. "
+            f"We're delighted to cook for you and can't wait to serve you.\n\n"
+            f"Order #{ref}\n"
+            f"{items_txt}\n"
+            f"Total: CA${total:.2f}\n"
+            f"{pay_note}\n\n"
+            f"Invoice: {invoice_url}\n\n"
+            f"We'll keep you posted. Bon appetit!"
+        )
         await _send_sms_via_settings(settings, cust_phone, body)
     except Exception as e:
         logging.warning(f"[order.notify.cust_sms] {e}")
@@ -4699,13 +4709,18 @@ async def _notify_order_created(order: dict, settings: dict, user_doc: dict):
         if owner_email and _email.is_configured():
             html = (
                 f"<h2>New order #{ref} 🛎️</h2>"
-                f"<p>Customer: {cust} · {cust_phone} · {cust_email}</p>"
-                f"<pre style='font-family:inherit'>{items_txt}</pre>"
-                f"<p><b>Total CA${total:.2f}</b> · {order.get('payment_method','').upper()}</p>"
-                f"<p>Deliver to: {(order.get('address') or {}).get('line1','')}, {(order.get('address') or {}).get('city','')}</p>"
-                f"<p><a href='{invoice_url}'>Invoice</a></p>"
+                f"<p><b>{BRAND_NAME}</b></p>"
+                f"<p><b>Customer:</b> {cust}<br/>"
+                f"<b>Phone:</b> {cust_phone or '—'}<br/>"
+                f"<b>Email:</b> {cust_email or '—'}</p>"
+                f"<p><b>Order total: CA${total:.2f}</b> · Payment: {order.get('payment_method','').upper()}</p>"
+                f"<p><b>Order details:</b></p>"
+                f"<pre style='font-family:inherit;background:#f7f7f7;padding:10px;border-radius:8px'>{items_txt}</pre>"
+                f"<p><b>Deliver to:</b> {(order.get('address') or {}).get('line1','')}, {(order.get('address') or {}).get('city','')}<br/>"
+                f"<b>When:</b> {order.get('slot',{}).get('window','').replace('_',' ')} · {order.get('slot',{}).get('date','')}</p>"
+                f"<p><a href='{invoice_url}'>View invoice (PDF)</a></p>"
             )
-            await _email.send_email(to=owner_email, subject=f"{BRAND_NAME} — New order #{ref} (CA${total:.2f})", html=html)
+            await _email.send_email(to=owner_email, subject=f"{BRAND_NAME} — New order #{ref} from {cust} (CA${total:.2f})", html=html)
     except Exception as e:
         logging.warning(f"[order.notify.owner_email] {e}")
     try:
