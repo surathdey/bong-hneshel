@@ -72,6 +72,7 @@ export default function CartScreen() {
     looksLikeGuestName(user?.name) ? "" : (user?.name || "")
   );
   const [couponCode, setCouponCode] = useState("");
+  const [autoTriedCoupon, setAutoTriedCoupon] = useState(false);
   const [redeemPoints, setRedeemPoints] = useState(0);
   const [instructions, setInstructions] = useState("");
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -198,6 +199,16 @@ export default function CartScreen() {
   };
 
   useEffect(() => { fetchQuote(); /* eslint-disable-next-line */ }, [items, couponCode, redeemPoints, selectedSlot, paymentMethod, coords, city, postal]);
+
+  // Auto-apply the first-time coupon for eligible logged-in customers.
+  useEffect(() => {
+    if (autoTriedCoupon || couponCode || !user || user.role === "guest") return;
+    (async () => {
+      setAutoTriedCoupon(true);
+      const r = await api.get<any>("/coupons/first-time");
+      if (r.ok && r.data?.coupon?.code) setCouponCode(r.data.coupon.code);
+    })();
+  }, [user, couponCode, autoTriedCoupon]);
 
   const placeAndPay = async () => {
     if (!canPlace) { Alert.alert("Missing info", "Please add your name, delivery address, phone, a valid email and pick a slot."); return; }
@@ -526,9 +537,14 @@ export default function CartScreen() {
                     <Text style={styles.applyBtnText}>Apply</Text>
                   </TouchableOpacity>
                 </View>
-                {quote?.coupon_code && (
-                  <Text style={styles.couponOK}>✓ {quote.coupon_code} applied · saved {centsToCAD(quote.discount_cents)}</Text>
-                )}
+                {quote?.coupon_code ? (
+                  <View style={styles.couponApplied}>
+                    <Text style={styles.couponOK}>✓ {quote.coupon_code} applied · saved {centsToCAD(quote.discount_cents)}</Text>
+                    <TouchableOpacity testID="cart-coupon-remove" onPress={() => setCouponCode("")} hitSlop={8}>
+                      <Text style={styles.couponRemove}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
                 {publicSettings?.loyalty_enabled !== false && (() => {
                   const redeemStep = Math.max(1, publicSettings?.loyalty_redeem_points_per_dollar || 100);
                   const isMember = !!user && user.role !== "guest";
@@ -738,6 +754,8 @@ const styles = StyleSheet.create({
   applyBtn: { paddingHorizontal: 18, paddingVertical: 12, backgroundColor: colors.text, borderRadius: radius.pill },
   applyBtnText: { color: "#fff", fontWeight: "700" },
   couponOK: { color: colors.success, fontWeight: "700", fontSize: 12 },
+  couponApplied: { marginTop: spacing.sm, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  couponRemove: { color: colors.primary, fontWeight: "700", fontSize: 12 },
   pointsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
   pointsLabel: { color: colors.text, fontSize: 13, fontWeight: "700", flexShrink: 1 },
   pointsSub: { color: colors.textMuted, fontSize: 11, marginTop: 2 },

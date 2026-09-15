@@ -450,6 +450,7 @@ class Coupon(BaseModel):
     active: bool = True
     min_order_cents: int = 0
     description: str = ""
+    first_time_only: bool = False  # redeemable only by logged-in users on their first order
 
 
 class CateringSelection(BaseModel):
@@ -1064,6 +1065,42 @@ async def catering_quote_request(body: dict):
 # ==========================================================
 # COUPONS
 # ==========================================================
+@api.get("/coupons/first-time")
+async def first_time_coupon(user: User = Depends(_current_user)):
+    """Return the active first-time coupon IF this logged-in user is eligible
+    (non-guest and has never ordered). Used to auto-apply at checkout."""
+    if getattr(user, "role", "customer") == "guest":
+        return {"coupon": None}
+    prior = await db.orders.count_documents({"user_id": user.user_id, "status": {"$ne": "cancelled"}})
+    if prior > 0:
+        return {"coupon": None}
+    c = await db.coupons.find_one({"active": True, "first_time_only": True}, {"_id": 0})
+    return {"coupon": c}
+
+
+async def _apply_coupon(code: Optional[str], subtotal: int, user):
+    """Validate a coupon for this user/order and return (discount_cents, code_or_None).
+    Enforces min-order and first-time-only (logged-in, no prior orders) rules."""
+    if not code:
+        return 0, None
+    c = await db.coupons.find_one({"code": code.upper(), "active": True}, {"_id": 0})
+    if not c:
+        return 0, None
+    if subtotal < int(c.get("min_order_cents", 0) or 0):
+        return 0, None
+    if c.get("first_time_only"):
+        if getattr(user, "role", "customer") == "guest":
+            return 0, None
+        prior = await db.orders.count_documents({"user_id": user.user_id, "status": {"$ne": "cancelled"}})
+        if prior > 0:
+            return 0, None
+    if c["discount_type"] == "percent":
+        discount = subtotal * int(c["value"]) // 100
+    else:
+        discount = min(int(c["value"]), subtotal)
+    return discount, c["code"]
+
+
 @api.get("/coupons/{code}")
 async def coupon_lookup(code: str):
     c = await db.coupons.find_one({"code": code.upper(), "active": True}, {"_id": 0})
@@ -1475,16 +1512,7 @@ def _tax_enabled_for_method(settings: dict, payment_method: str) -> bool:
 async def order_quote(req: QuoteOrderReq, user: User = Depends(_current_user)):
     snaps, subtotal = await _resolve_items(req.items)
     settings = await _get_settings()
-    discount = 0
-    coupon = None
-    if req.coupon_code:
-        c = await db.coupons.find_one({"code": req.coupon_code.upper(), "active": True}, {"_id": 0})
-        if c and subtotal >= c.get("min_order_cents", 0):
-            if c["discount_type"] == "percent":
-                discount = subtotal * c["value"] // 100
-            else:
-                discount = c["value"]
-            coupon = c["code"]
+    discount, coupon = await _apply_coupon(req.coupon_code, subtotal, user)
     _pts_used, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - discount))
     delivery_fee, dist_km, fee_tier = await compute_delivery_fee(req.address, settings)
     taxable = max(0, subtotal + delivery_fee - discount - points_redeem_cents)
@@ -1527,16 +1555,7 @@ async def create_order(req: CreateOrderReq, request: Request, user: User = Depen
         )
     snaps, subtotal = await _resolve_items(req.items)
     settings = await _get_settings()
-    discount = 0
-    coupon_code = None
-    if req.coupon_code:
-        c = await db.coupons.find_one({"code": req.coupon_code.upper(), "active": True}, {"_id": 0})
-        if c and subtotal >= c.get("min_order_cents", 0):
-            if c["discount_type"] == "percent":
-                discount = subtotal * c["value"] // 100
-            else:
-                discount = c["value"]
-            coupon_code = c["code"]
+    discount, coupon_code = await _apply_coupon(req.coupon_code, subtotal, user)
     points_redeem, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - discount))
     delivery_fee, dist_km, fee_tier = await compute_delivery_fee(req.address, settings)
     taxable = max(0, subtotal + delivery_fee - discount - points_redeem_cents)
@@ -2202,6 +2221,9 @@ CATERING_MASTER_EXTRAS = [
 ]
 
 COUPONS_SEED = [
+    {"code": "FIRST10", "discount_type": "percent", "value": 10, "active": True,
+     "min_order_cents": 0, "first_time_only": True,
+     "description": "10% off your first order from the app"},
     {"code": "WELCOME10", "discount_type": "percent", "value": 10, "active": True,
      "min_order_cents": 2000, "description": "10% off first order over $20"},
     {"code": "BENGALI15", "discount_type": "percent", "value": 15, "active": True,

@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/src/auth";
 import { useCart } from "@/src/cart";
 import { colors } from "@/src/theme";
+import FirstOrderBanner from "@/src/components/FirstOrderBanner";
 
 function BagIcon({ color, size }: { color: string; size: number }) {
   const { count } = useCart();
@@ -32,7 +33,9 @@ export default function TabLayout() {
   }, [loading, user, router]);
 
   return (
-    <Tabs
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <FirstOrderBanner />
+      <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
@@ -95,7 +98,8 @@ export default function TabLayout() {
           tabBarButtonTestID: "tab-profile",
         }}
       />
-    </Tabs>
+      </Tabs>
+    </View>
   );
 }
 
