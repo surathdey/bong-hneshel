@@ -1,0 +1,21 @@
+{
+  "key": "mustardgarden",
+  "name": "Mustard Garden",
+  "legal_name": "Mustard Garden",
+  "email_from": "orders@mustardgarden.ca",
+  "admin_email": "admin@mustardgarden.ca",
+  "support_email": "support@mustardgarden.ca",
+  "guest_email_domain": "guest.mustardgarden.ca",
+  "delivery_admin_email": "delivery@mustardgarden.ca",
+  "region": {
+    "country": "CA",
+    "currency": "CAD",
+    "timezone": "America/Toronto"
+  },
+  "platform": {
+    "tenant_id": "tnt_264dfe34083a",
+    "api_key": "sk_tnt_b2mdcGJ1TBajUojrmk-rj4n7DXboPsLf",
+    "status_url": "https://control-plane-11.preview.emergentagent.com/api/tenant/status",
+    "poll_seconds": 300
+  }
+}

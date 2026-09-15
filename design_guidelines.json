@@ -1,0 +1,142 @@
+{
+  "theme": "light",
+  "typography": {
+    "headings": {
+      "font_family": "Playfair Display, serif",
+      "weights": ["font-semibold", "font-black"],
+      "tracking": "tracking-tight"
+    },
+    "body": {
+      "font_family": "Manrope, sans-serif",
+      "weights": ["font-normal", "font-medium"],
+      "tracking": "tracking-normal"
+    },
+    "scale": {
+      "h1": "text-4xl sm:text-5xl",
+      "h2": "text-2xl sm:text-3xl",
+      "h3": "text-xl sm:text-2xl",
+      "body": "text-base",
+      "small": "text-sm",
+      "labels": "text-xs tracking-[0.2em] uppercase"
+    }
+  },
+  "colors": {
+    "archetype": "Organic & Earthy",
+    "light": {
+      "background": "#FAF9F6",
+      "surface": "#FFFFFF",
+      "primary": "#B14F36",
+      "secondary": "#E2A323",
+      "accent": "#2F4F4F",
+      "text_main": "#2C2C2C",
+      "text_muted": "#6B7280",
+      "border": "#E5E7EB"
+    },
+    "dark": {
+      "background": "#121212",
+      "surface": "#1E1E1E",
+      "primary": "#D9684C",
+      "secondary": "#F5B638",
+      "accent": "#4A7A7A",
+      "text_main": "#F3F4F6",
+      "text_muted": "#9CA3AF",
+      "border": "#374151"
+    }
+  },
+  "layouts": {
+    "app_shell": "Mobile-first responsive view. Use a bottom navigation tab bar (fixed bottom-0, z-50, backdrop-blur-xl bg-white/90 border-t border-border). Main content must have bottom padding to prevent overlap.",
+    "menu_grid": "Bento-style layout for menu items. grid-cols-1 or md:grid-cols-2. Large hero cards for featured dishes (col-span-full), smaller squares for a la carte items.",
+    "spacing": "Generous. Use p-6, p-8 for layout boundaries. Sections separated by py-12 or gap-8."
+  },
+  "visual_enhancers": {
+    "surfaces": "Glassmorphism for bottom nav and sticky headers (backdrop-blur-xl, border-t border-white/20). Neumorphism minimal cards for menu items (soft shadow, flat background, 1px subtle border).",
+    "corners": "Subtle roundness. rounded-2xl or rounded-3xl for food imagery containers to feel organic and friendly.",
+    "images": "Hero imagery must have bg-black/30 overlay if text is placed on top. Food imagery should be edge-to-edge in cards."
+  },
+  "components": {
+    "button": "Pill-shaped (rounded-full). Primary buttons use Terracotta (#B14F36) with hover lift (-translate-y-1) and shadow-lg.",
+    "delivery_slot_picker": "Horizontal scrollable date/time chips. Must feel tactile. Active state uses Secondary color (Ochre) background with primary text.",
+    "cart_stepper": "Quantity toggles (+/-) should be rounded, clearly bounded by border-border, with generous hit areas.",
+    "timeline": "For order tracking. Vertical line with circular nodes. Active nodes in Primary color, pulsing animation (animate-pulse) on the current active step.",
+    "navigation": "BottomTab pattern: Home, Menu, Cart, Profile. Use lucide-react icons."
+  },
+  "image_urls": {
+    "featured_biryani": [
+      {
+        "url": "https://images.pexels.com/photos/31537385/pexels-photo-31537385.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Featured authentic biryani hero image",
+        "category": "hero"
+      },
+      {
+        "url": "https://images.pexels.com/photos/35539325/pexels-photo-35539325.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Biryani with papadum",
+        "category": "menu_item"
+      }
+    ],
+    "curries_and_bowls": [
+      {
+        "url": "https://images.pexels.com/photos/35267281/pexels-photo-35267281.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Dark bowls with rich indian curries",
+        "category": "menu_item"
+      },
+      {
+        "url": "https://images.pexels.com/photos/9345647/pexels-photo-9345647.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Stainless steel tray with curries",
+        "category": "menu_item"
+      }
+    ],
+    "catering": [
+      {
+        "url": "https://images.unsplash.com/photo-1728910156510-77488f19b152?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwyfHxpbmRpYW4lMjBjYXRlcmluZyUyMGZlYXN0fGVufDB8fHx8MTc4NDY0OTgzNHww&ixlib=rb-4.1.0&q=85",
+        "description": "Catering table spread",
+        "category": "catering_hero"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1589778655375-3e622a9fc91c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwzfHxpbmRpYW4lMjBjYXRlcmluZyUyMGZlYXN0fGVufDB8fHx8MTc4NDY0OTgzNHww&ixlib=rb-4.1.0&q=85",
+        "description": "Assorted catering food trays",
+        "category": "catering_gallery"
+      }
+    ]
+  },
+  "motion": {
+    "page_transitions": "Slide up and fade in for new screens or tab switches.",
+    "list_items": "Staggered entrance animations for menu lists.",
+    "interactions": "Haptic-style bounce on cart add. Scale-down on button press (active:scale-95)."
+  },
+  "accessibility": {
+    "contrast": "Ensure text over images has background gradient or text-shadow.",
+    "focus": "focus:ring-2 focus:ring-primary focus:ring-offset-2 on all interactive elements.",
+    "data_testid": "MANDATORY. Add data-testid attributes to all buttons, links, inputs, and functional UI elements."
+  },
+  "instructions_to_main_agent": [
+    "Design a 'Mobile-First' Web App view since this is targeting a mobile delivery app. The layout should mimic a native mobile app shell.",
+    "Use standard React components using .js or .jsx extensions ONLY. Do NOT use .tsx as per project configuration.",
+    "Use 'Playfair Display' for all main headings (H1-H3) to give a high-end, slow-food feeling. Use 'Manrope' for standard text.",
+    "Use a bento-style layout for the Menu. Hero items should be large (col-span-full), side items can be square grids.",
+    "Use the Organic & Earthy palette. Base backgrounds should be warm Bone White (#FAF9F6) rather than pure white. Accent colors are Terracotta (#B14F36) and Ochre.",
+    "Implement bottom tab navigation (fixed bottom, glassmorphic backdrop) containing Home, Menu, Cart, Profile.",
+    "Delivery Slot Picker should be highly prominent, visually showing Friday evening and Saturday morning slots.",
+    "For Map placeholders, use a minimal map component or styled image layered with a vertical timeline tracker for orders.",
+    "DO NOT use a fully transparent header; if it overlaps scrolling content, use backdrop-blur and a semi-transparent background.",
+    "All interactive and key informational elements MUST include a data-testid attribute.",
+    "Use lucide-react for icons."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms.",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Create new components that match the style and conventions of existing components when needed.",
+    "Use sonner for toasts, located in /app/src/components/ui/sonner.js or similar based on your .js setup"
+  ]
+}

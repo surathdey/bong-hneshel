@@ -1,0 +1,51 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+.metro-cache/
+# ---- Web bundle ----------------------------------------------------
+# Emergent Support (2026-08-26): "Add a deploy-time build step that runs
+# `npx expo export --platform web --output-dir /app/frontend/dist` during the
+# image build, and update frontend/.gitignore so dist/assets/ is not ignored".
+# The build is wired via the "postinstall" script in package.json; here we
+# make sure the essential subfolders survive git-based deploy pipelines.
+!dist/
+!dist/**
+!dist/assets/
+!dist/assets/**
+!dist/_expo/
+!dist/_expo/**
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example

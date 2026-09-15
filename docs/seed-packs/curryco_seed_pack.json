@@ -1,0 +1,1800 @@
+{
+  "_meta": {
+    "collections": [
+      {
+        "count": 46,
+        "name": "master_menu"
+      },
+      {
+        "count": 3,
+        "name": "weekly_menus"
+      },
+      {
+        "count": 5,
+        "name": "catering_packages"
+      },
+      {
+        "count": 3,
+        "name": "coupons"
+      },
+      {
+        "count": 0,
+        "name": "delivery_zones"
+      },
+      {
+        "count": 1,
+        "name": "business_settings"
+      }
+    ],
+    "generated_at": "2026-08-28T06:26:20.364126Z",
+    "schema_version": 1,
+    "source_brand": "curryandco",
+    "source_db": "curry_co_db"
+  },
+  "business_settings": [
+    {
+      "currency": "CAD",
+      "default_delivery_fee_cents": 0,
+      "delivery_areas": [
+        "Toronto",
+        "Mississauga",
+        "Brampton",
+        "Markham"
+      ],
+      "delivery_days": [
+        1
+      ],
+      "integrations": {
+        "email": {
+          "last_test_at": "2026-08-27T23:29:05.696762+00:00",
+          "last_test_error": "",
+          "last_test_ok": true,
+          "recipient": "delivered@resend.dev"
+        },
+        "google_drive": {
+          "client_email": "test@fake.iam.gserviceaccount.com",
+          "folder_id": "test-folder-id",
+          "last_test_at": "2026-08-27T23:28:57.876948+00:00",
+          "last_test_error": "Invalid Google service-account credentials: Could not deserialize key data. The data may be in an incorrect format, it may be encrypted with an unsupported algorithm, or it may be an unsupported key type (e.g. EC curves with explicit parameters). Details: ASN.1 parsing error: invalid length",
+          "last_test_ok": false,
+          "service_account_json_encrypted": "gAAAAABqkMg5qQJqylP1kQo8jaZ1E_d2rlxW4SBXFUP8u7rhZu_xqXrco84cPc1Ip36G87NRtkIqeKB1cM1oHRoOii9qJmi2NLgRBa__UPbNhjz-oaICIrhhOjk7-X9Wd-ojF1sCDYVlizMLtSCZZoD4G6nsSKeEaOjdZ7qPF1cPMvbYOJ5ApGDUjZXsVSXTBCMhXmrryb2Jv48sEuseMjXkLa0k8we5Tg8jDH7TzKe8gefDyhtkS6kpRNmOelQFd4yGaLjcTboWgUfV59cRFMXDVa3iiMu1LuGngOpwK7KOhztqld-EYyN2pQrvS5HqffnD9kX4XkgpI0SLh_F8oLPXme0hFD6xUs3XBBFomFXN5c94pHEyjTk=",
+          "user_email": "you@test.com"
+        },
+        "twilio": {
+          "account_sid": "ACfake123",
+          "auth_token_encrypted": "gAAAAABqkMg5aePhHMrzQykAPz8jhftCFy4NmTnvFxLK3T9-V0YPce7CaDYF_QcaVxH72BizriuTNK7kRJSOB9IU_aJNdxDCHQ==",
+          "from_number": "+14165551234",
+          "last_test_at": "2026-08-27T23:28:58.205609+00:00",
+          "last_test_error": "Invalid Twilio Account SID or Auth Token.",
+          "last_test_ok": false
+        }
+      },
+      "key": "default",
+      "minimum_order_cents": 0,
+      "operating_hours": "Every day ordering \u00b7 Mon delivery",
+      "ordering_days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "payment_methods": {
+        "cod": {
+          "client_id": "",
+          "client_secret": "",
+          "email": "",
+          "enabled": true,
+          "instructions": "",
+          "publishable_key": "",
+          "secret_key": "",
+          "tax_enabled": false
+        },
+        "interac": {
+          "client_id": "",
+          "client_secret": "",
+          "email": "",
+          "enabled": true,
+          "instructions": "",
+          "publishable_key": "",
+          "secret_key": "",
+          "tax_enabled": true
+        },
+        "paypal": {
+          "client_id": "",
+          "client_secret": "",
+          "email": "",
+          "enabled": false,
+          "instructions": "",
+          "publishable_key": "",
+          "secret_key": "",
+          "tax_enabled": false
+        },
+        "stripe": {
+          "client_id": "",
+          "client_secret": "",
+          "email": "",
+          "enabled": false,
+          "instructions": "",
+          "publishable_key": "",
+          "secret_key": "",
+          "tax_enabled": true
+        }
+      },
+      "tax_enabled": false,
+      "tax_label": "HST",
+      "tax_rate_bps": 1300
+    }
+  ],
+  "catering_packages": [
+    {
+      "choice_groups": [
+        {
+          "display_order": 0,
+          "group_id": "grp_2126ad24",
+          "max_select": 1,
+          "min_select": 1,
+          "option_master_ids": [
+            "mi_050b532a73",
+            "mi_93a90ad1e4",
+            "mi_71517bc668",
+            "mi_87ea1c517e",
+            "mi_a83f187931",
+            "mi_a81cebca3f"
+          ],
+          "subtitle": "Choose 1 snack",
+          "title": "Snack"
+        },
+        {
+          "display_order": 1,
+          "group_id": "grp_14d99253",
+          "max_select": 1,
+          "min_select": 1,
+          "option_master_ids": [
+            "mi_2965e321f1",
+            "mi_95bb4fcf2b",
+            "mi_f5144c4780"
+          ],
+          "subtitle": "Choose 1",
+          "title": "Tea / Coffee Service"
+        }
+      ],
+      "contact_phone": "",
+      "description": "Handpicked Kolkata street snacks paired with your favourite tea or coffee.",
+      "emoji": "\ud83e\uded6",
+      "image_url": "https://images.unsplash.com/photo-1633945274309-2c16c96d020a?auto=format&fit=crop&w=1200&q=80",
+      "included_master_ids": [],
+      "includes": [
+        "1 Snack + Tea/Coffee Service"
+      ],
+      "is_active": true,
+      "is_custom_quote": false,
+      "is_featured": true,
+      "min_guests": 10,
+      "name": "Kolkata Adda Snack Box",
+      "package_id": "cat_da0ed4c8cc",
+      "perfect_for": "Small gatherings \u00b7 Tea-time parties \u00b7 Office meetups \u00b7 Birthdays",
+      "premium_items": [],
+      "price_cents": 900,
+      "sort_order": 1,
+      "tagline": "Perfect for small gatherings, tea-time parties, office meetups, birthdays",
+      "upgrade_tiers": [
+        {
+          "group_overrides": {},
+          "is_default": true,
+          "per_person_cents": 900,
+          "subtitle": "$9 / person",
+          "tier_id": "tier_193a6a58",
+          "title": "Base \u2014 1 Snack + Tea/Coffee"
+        },
+        {
+          "group_overrides": {
+            "grp_2126ad24": {
+              "max_select": 2,
+              "min_select": 2
+            }
+          },
+          "is_default": false,
+          "per_person_cents": 1200,
+          "subtitle": "$12 / person",
+          "tier_id": "tier_0beaea0e",
+          "title": "Upgrade \u2014 2 Snacks + Tea/Coffee"
+        }
+      ]
+    },
+    {
+      "choice_groups": [
+        {
+          "display_order": 0,
+          "group_id": "grp_73bfbc08",
+          "max_select": 3,
+          "min_select": 3,
+          "option_master_ids": [
+            "mi_abfe9bd9d7",
+            "mi_a9d657cdb4",
+            "mi_29a5441160",
+            "mi_8bc124cc77",
+            "mi_076630b785",
+            "mi_343d7b3edd"
+          ],
+          "subtitle": "Choose Any 3",
+          "title": "3 Veg Items"
+        },
+        {
+          "display_order": 1,
+          "group_id": "grp_ba5b47eb",
+          "max_select": 3,
+          "min_select": 3,
+          "option_master_ids": [
+            "mi_37f88e039c",
+            "mi_2896c634d4",
+            "mi_b686963790",
+            "mi_eb00944a8c",
+            "mi_405fe91b38"
+          ],
+          "subtitle": "Choose Any 3",
+          "title": "3 Non-Veg Items"
+        },
+        {
+          "display_order": 2,
+          "group_id": "grp_98ed2481",
+          "max_select": 1,
+          "min_select": 1,
+          "option_master_ids": [
+            "mi_a7f9784b07",
+            "mi_42ecae169f",
+            "mi_cd32e73377"
+          ],
+          "subtitle": "Choose Any 1",
+          "title": "Dessert"
+        }
+      ],
+      "contact_phone": "",
+      "description": "A cosy Bengali Sunday spread \u2014 three vegetables, three non-veg curries, rice and a sweet finish.",
+      "emoji": "\ud83c\udf7d\ufe0f",
+      "image_url": "https://images.unsplash.com/photo-1728910156510-77488f19b152?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwyfHxpbmRpYW4lMjBjYXRlcmluZyUyMGZlYXN0fGVufDB8fHx8MTc4NDY0OTgzNHww&ixlib=rb-4.1.0&q=85",
+      "included_master_ids": [
+        "mi_4f4bf06e87",
+        "mi_0626c54569"
+      ],
+      "includes": [
+        "3 Veg + 3 Non-Veg + Dessert",
+        "Rice & Salad included"
+      ],
+      "is_active": true,
+      "is_custom_quote": false,
+      "is_featured": true,
+      "min_guests": 10,
+      "name": "Sunday Bari'r Lunch",
+      "package_id": "cat_8932326b7c",
+      "perfect_for": "Sunday family lunches \u00b7 Small home gatherings",
+      "premium_items": [
+        {
+          "master_item_id": "mi_405fe91b38",
+          "upcharge_per_person_cents": 400
+        }
+      ],
+      "price_cents": 2499,
+      "sort_order": 2,
+      "tagline": "Homestyle Bengali Comfort Feast",
+      "upgrade_tiers": []
+    },
+    {
+      "choice_groups": [
+        {
+          "display_order": 0,
+          "group_id": "grp_cf2645d8",
+          "max_select": 3,
+          "min_select": 3,
+          "option_master_ids": [
+            "mi_abfe9bd9d7",
+            "mi_a9d657cdb4",
+            "mi_29a5441160",
+            "mi_8bc124cc77",
+            "mi_076630b785",
+            "mi_343d7b3edd"
+          ],
+          "subtitle": "Choose Any 3",
+          "title": "3 Veg Items"
+        },
+        {
+          "display_order": 1,
+          "group_id": "grp_489ead72",
+          "max_select": 3,
+          "min_select": 3,
+          "option_master_ids": [
+            "mi_932dae129b",
+            "mi_405fe91b38",
+            "mi_e87255dd34",
+            "mi_eb00944a8c",
+            "mi_2896c634d4"
+          ],
+          "subtitle": "Choose Any 3",
+          "title": "3 Premium Non-Veg Items"
+        },
+        {
+          "display_order": 2,
+          "group_id": "grp_0897587c",
+          "max_select": 2,
+          "min_select": 2,
+          "option_master_ids": [
+            "mi_a7f9784b07",
+            "mi_cd32e73377",
+            "mi_55c829e18e",
+            "mi_42ecae169f"
+          ],
+          "subtitle": "Choose Any 2",
+          "title": "Dessert"
+        }
+      ],
+      "contact_phone": "",
+      "description": "Premium proteins and Basanti Pulao \u2014 a sit-down dinner spread fit for celebrations.",
+      "emoji": "\ud83d\udc51",
+      "image_url": "https://images.unsplash.com/photo-1589778655375-3e622a9fc91c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwzfHxpbmRpYW4lMjBjYXRlcmluZyUyMGZlYXN0fGVufDB8fHx8MTc4NDY0OTgzNHww&ixlib=rb-4.1.0&q=85",
+      "included_master_ids": [
+        "mi_190e1decca",
+        "mi_6badd83a15",
+        "mi_0626c54569"
+      ],
+      "includes": [
+        "3 Veg + 3 Premium Non-Veg + 2 Desserts",
+        "Basanti Pulao, Luchi & Salad included"
+      ],
+      "is_active": true,
+      "is_custom_quote": false,
+      "is_featured": true,
+      "min_guests": 15,
+      "name": "Royal Bengali Dinner Feast",
+      "package_id": "cat_a8e0ab9f0e",
+      "perfect_for": "Family celebrations \u00b7 Anniversaries \u00b7 Special gatherings",
+      "premium_items": [],
+      "price_cents": 3499,
+      "sort_order": 3,
+      "tagline": "Perfect for Family Celebrations & Special Gatherings",
+      "upgrade_tiers": []
+    },
+    {
+      "choice_groups": [
+        {
+          "display_order": 0,
+          "group_id": "grp_c9f37dc7",
+          "max_select": 4,
+          "min_select": 4,
+          "option_master_ids": [
+            "mi_abfe9bd9d7",
+            "mi_a9d657cdb4",
+            "mi_29a5441160",
+            "mi_8bc124cc77",
+            "mi_076630b785",
+            "mi_343d7b3edd",
+            "mi_ce5eaabf67"
+          ],
+          "subtitle": "Choose Any 4",
+          "title": "4 Veg Items"
+        },
+        {
+          "display_order": 1,
+          "group_id": "grp_634f6f07",
+          "max_select": 4,
+          "min_select": 4,
+          "option_master_ids": [
+            "mi_932dae129b",
+            "mi_405fe91b38",
+            "mi_e87255dd34",
+            "mi_eb00944a8c",
+            "mi_2896c634d4",
+            "mi_37f88e039c",
+            "mi_b686963790"
+          ],
+          "subtitle": "Choose Any 4",
+          "title": "4 Non-Veg Items"
+        },
+        {
+          "display_order": 2,
+          "group_id": "grp_5227c6ed",
+          "max_select": 2,
+          "min_select": 2,
+          "option_master_ids": [
+            "mi_a7f9784b07",
+            "mi_cd32e73377",
+            "mi_55c829e18e",
+            "mi_42ecae169f",
+            "mi_8efc17b318"
+          ],
+          "subtitle": "Choose Any 2",
+          "title": "Dessert"
+        },
+        {
+          "display_order": 3,
+          "group_id": "grp_203c7604",
+          "max_select": 1,
+          "min_select": 1,
+          "option_master_ids": [
+            "mi_53a7bdb897",
+            "mi_92b9e4738f"
+          ],
+          "subtitle": "Choose 1",
+          "title": "Beverage Service"
+        }
+      ],
+      "contact_phone": "",
+      "description": "A full Bonedi Bari buffet with 4+4 mains, live sides, a dessert bar and beverage service.",
+      "emoji": "\ud83c\udf89",
+      "image_url": "https://images.pexels.com/photos/31537385/pexels-photo-31537385.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "included_master_ids": [
+        "mi_190e1decca",
+        "mi_6badd83a15",
+        "mi_0626c54569",
+        "mi_86c1386e38",
+        "mi_6da345328a"
+      ],
+      "includes": [
+        "4 Veg + 4 Non-Veg + 2 Desserts",
+        "Pulao, Luchi, Salad, Chutney, Papad included",
+        "Tea / Soft Drink service"
+      ],
+      "is_active": true,
+      "is_custom_quote": false,
+      "is_featured": true,
+      "min_guests": 20,
+      "name": "Bonedi Bengali Celebration Buffet",
+      "package_id": "cat_4b39ac90fe",
+      "perfect_for": "Annaprashan \u00b7 Birthday parties \u00b7 Housewarming \u00b7 Community events",
+      "premium_items": [],
+      "price_cents": 3999,
+      "sort_order": 4,
+      "tagline": "Traditional Bengali Banquet for Large Gatherings",
+      "upgrade_tiers": []
+    },
+    {
+      "choice_groups": [
+        {
+          "display_order": 0,
+          "group_id": "grp_785c154b",
+          "max_select": 2,
+          "min_select": 2,
+          "option_master_ids": [
+            "mi_71517bc668",
+            "mi_250d9e3994",
+            "mi_a81cebca3f",
+            "mi_87ea1c517e"
+          ],
+          "subtitle": "Choose Any 2",
+          "title": "Welcome Snacks"
+        },
+        {
+          "display_order": 1,
+          "group_id": "grp_9bd51b76",
+          "max_select": 4,
+          "min_select": 4,
+          "option_master_ids": [
+            "mi_abfe9bd9d7",
+            "mi_a9d657cdb4",
+            "mi_29a5441160",
+            "mi_8bc124cc77",
+            "mi_076630b785",
+            "mi_343d7b3edd",
+            "mi_ce5eaabf67"
+          ],
+          "subtitle": "Choose Any 4",
+          "title": "4 Veg Items"
+        },
+        {
+          "display_order": 2,
+          "group_id": "grp_293b96a2",
+          "max_select": 4,
+          "min_select": 4,
+          "option_master_ids": [
+            "mi_e87255dd34",
+            "mi_405fe91b38",
+            "mi_932dae129b",
+            "mi_c5360805b1",
+            "mi_eb00944a8c"
+          ],
+          "subtitle": "Choose Any 4",
+          "title": "4 Premium Non-Veg Items"
+        },
+        {
+          "display_order": 3,
+          "group_id": "grp_a8087745",
+          "max_select": 3,
+          "min_select": 3,
+          "option_master_ids": [
+            "mi_a7f9784b07",
+            "mi_cd32e73377",
+            "mi_55c829e18e",
+            "mi_42ecae169f",
+            "mi_8efc17b318"
+          ],
+          "subtitle": "Choose Any 3",
+          "title": "Dessert"
+        },
+        {
+          "display_order": 4,
+          "group_id": "grp_71cd672e",
+          "max_select": 1,
+          "min_select": 1,
+          "option_master_ids": [
+            "mi_53a7bdb897"
+          ],
+          "subtitle": "Included",
+          "title": "Beverage Station"
+        }
+      ],
+      "contact_phone": "",
+      "description": "A chef-curated multi-course banquet with welcome snacks, four premium mains, a dessert bar and beverage station.",
+      "emoji": "\ud83c\udfc6",
+      "image_url": "https://images.pexels.com/photos/31537385/pexels-photo-31537385.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "included_master_ids": [
+        "mi_190e1decca",
+        "mi_6badd83a15",
+        "mi_4f4bf06e87",
+        "mi_86c1386e38",
+        "mi_0626c54569",
+        "mi_6da345328a"
+      ],
+      "includes": [
+        "Welcome snacks \u00b7 4 Veg + 4 Premium Non-Veg \u00b7 3 Desserts \u00b7 Beverage Station",
+        "Pulao, Luchi, Rice, Chutney, Salad, Papad included"
+      ],
+      "is_active": true,
+      "is_custom_quote": true,
+      "is_featured": true,
+      "min_guests": 30,
+      "name": "Shonar Bangla Signature Grand Feast",
+      "package_id": "cat_4d6f4b2d5c",
+      "perfect_for": "Weddings \u00b7 Puja celebrations \u00b7 Corporate events \u00b7 Cultural functions",
+      "premium_items": [],
+      "price_cents": 0,
+      "sort_order": 5,
+      "tagline": "Our Premium Catering Experience",
+      "upgrade_tiers": []
+    }
+  ],
+  "coupons": [
+    {
+      "active": true,
+      "code": "WELCOME10",
+      "description": "10% off first order over $20",
+      "discount_type": "percent",
+      "min_order_cents": 2000,
+      "value": 10
+    },
+    {
+      "active": true,
+      "code": "BENGALI15",
+      "description": "15% off orders over $50",
+      "discount_type": "percent",
+      "min_order_cents": 5000,
+      "value": 15
+    },
+    {
+      "active": true,
+      "code": "MISHTI5",
+      "description": "$5 off orders over $30",
+      "discount_type": "fixed",
+      "min_order_cents": 3000,
+      "value": 500
+    }
+  ],
+  "delivery_zones": [],
+  "master_menu": [
+    {
+      "allergens": [],
+      "category": "rice",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1899,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Slow-cooked long-grain basmati with tender chicken, potatoes, boiled egg and Kolkata masala.",
+      "image_url": "https://images.pexels.com/photos/31537385/pexels-photo-31537385.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "is_active": true,
+      "item_id": "mi_e269969f75",
+      "kitchen_notes": "",
+      "name": "Kolkata Chicken Biryani",
+      "prep_notes": "",
+      "short_description": "Slow-cooked long-grain basmati with tender chicken, potatoes, boiled egg and Kolkata masala.",
+      "spice_level": "hot",
+      "veg_type": "non-vegetarian"
+    },
+    {
+      "allergens": [
+        "seafood"
+      ],
+      "category": "curry",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 2299,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Hilsa fish steamed in traditional mustard-poppy paste. Bengali monsoon classic.",
+      "image_url": "https://images.pexels.com/photos/9345647/pexels-photo-9345647.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "is_active": true,
+      "item_id": "mi_e87255dd34",
+      "kitchen_notes": "",
+      "name": "Shorshe Ilish",
+      "prep_notes": "",
+      "short_description": "Hilsa fish steamed in traditional mustard-poppy paste. Bengali monsoon classic.",
+      "spice_level": "medium",
+      "veg_type": "non-vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "curry",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 2099,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Rich slow-cooked Bengali mutton in caramelized onion & warm spices.",
+      "image_url": "https://images.pexels.com/photos/35267281/pexels-photo-35267281.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "is_active": true,
+      "item_id": "mi_932dae129b",
+      "kitchen_notes": "",
+      "name": "Kosha Mangsho",
+      "prep_notes": "",
+      "short_description": "Rich slow-cooked Bengali mutton in caramelized onion & warm spices.",
+      "spice_level": "medium",
+      "veg_type": "non-vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "veg",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 999,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Bengal gram dal tempered with coconut, ghee, raisins and warm spices.",
+      "image_url": "https://images.pexels.com/photos/35539325/pexels-photo-35539325.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "is_active": true,
+      "item_id": "mi_abfe9bd9d7",
+      "kitchen_notes": "",
+      "name": "Cholar Dal",
+      "prep_notes": "",
+      "short_description": "Bengal gram dal tempered with coconut, ghee, raisins and warm spices.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "veg",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1800,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Baby potatoes in creamy poppy-seed paste, a Bengali comfort classic.",
+      "image_url": "https://images.pexels.com/photos/9345647/pexels-photo-9345647.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "is_active": true,
+      "item_id": "mi_ce5eaabf67",
+      "kitchen_notes": "",
+      "name": "Aloo Posto",
+      "prep_notes": "",
+      "short_description": "Baby potatoes in creamy poppy-seed paste, a Bengali comfort classic.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "starter",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1299,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Fluffy fried flatbread with spicy potato curry \u2014 the ultimate Bengali brunch.",
+      "image_url": "https://images.pexels.com/photos/35267281/pexels-photo-35267281.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "is_active": true,
+      "item_id": "mi_6badd83a15",
+      "kitchen_notes": "",
+      "name": "Luchi & Aloor Dom",
+      "prep_notes": "",
+      "short_description": "Fluffy fried flatbread with spicy potato curry \u2014 the ultimate Bengali brunch.",
+      "spice_level": "medium",
+      "veg_type": "non-vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "dessert",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 599,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Traditional Bengali sweet yogurt with caramelized jaggery, served chilled.",
+      "image_url": "https://images.pexels.com/photos/35539325/pexels-photo-35539325.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "is_active": true,
+      "item_id": "mi_a7f9784b07",
+      "kitchen_notes": "",
+      "name": "Mishti Doi",
+      "prep_notes": "",
+      "short_description": "Traditional Bengali sweet yogurt with caramelized jaggery, served chilled.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "dessert",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 799,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Soft cottage cheese dumplings soaked in fragrant sugar syrup.",
+      "image_url": "https://images.pexels.com/photos/31537385/pexels-photo-31537385.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "is_active": true,
+      "item_id": "mi_cd32e73377",
+      "kitchen_notes": "",
+      "name": "Rosogolla (6 pcs)",
+      "prep_notes": "",
+      "short_description": "Soft cottage cheese dumplings soaked in fragrant sugar syrup.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "curry",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1000,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Test",
+      "image_url": "",
+      "is_active": true,
+      "item_id": "mi_titkwdp5g3",
+      "kitchen_notes": "",
+      "name": "Test",
+      "prep_notes": "",
+      "short_description": "Test",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "starter",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 649,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Flaky paratha wrapped around spiced egg, onions and green chutney.",
+      "image_url": "https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_050b532a73",
+      "kitchen_notes": "",
+      "name": "Kolkata Egg Roll",
+      "prep_notes": "",
+      "short_description": "Flaky paratha wrapped around spiced egg, onions and green chutney.",
+      "spice_level": "medium",
+      "veg_type": "eggitarian"
+    },
+    {
+      "allergens": [
+        "seafood"
+      ],
+      "category": "starter",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 849,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Bengali-style crumb-fried bhetki with lemon and kasundi.",
+      "image_url": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_71517bc668",
+      "kitchen_notes": "",
+      "name": "Fish Fry",
+      "prep_notes": "",
+      "short_description": "Bengali-style crumb-fried bhetki with lemon and kasundi.",
+      "spice_level": "medium",
+      "veg_type": "non-vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "starter",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 499,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Beetroot-and-peanut croquettes with muri and kasundi.",
+      "image_url": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_87ea1c517e",
+      "kitchen_notes": "",
+      "name": "Veg Chop",
+      "prep_notes": "",
+      "short_description": "Beetroot-and-peanut croquettes with muri and kasundi.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "starter",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 499,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Banana-flower cutlets, a Kolkata tea-time favourite.",
+      "image_url": "https://images.unsplash.com/photo-1625944230945-1b7dd3b949ab?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_a83f187931",
+      "kitchen_notes": "",
+      "name": "Mochar Chop",
+      "prep_notes": "",
+      "short_description": "Banana-flower cutlets, a Kolkata tea-time favourite.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "starter",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 699,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Crispy gram-flour fritters with spiced chicken.",
+      "image_url": "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_a81cebca3f",
+      "kitchen_notes": "",
+      "name": "Chicken Pakora",
+      "prep_notes": "",
+      "short_description": "Crispy gram-flour fritters with spiced chicken.",
+      "spice_level": "medium",
+      "veg_type": "non-vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "starter",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 549,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Boiled egg encased in spiced potato and fried golden.",
+      "image_url": "https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_250d9e3994",
+      "kitchen_notes": "",
+      "name": "Egg Devil",
+      "prep_notes": "",
+      "short_description": "Boiled egg encased in spiced potato and fried golden.",
+      "spice_level": "medium",
+      "veg_type": "eggitarian"
+    },
+    {
+      "allergens": [],
+      "category": "beverage",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1499,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Cardamom-clove chai brewed the Kolkata way (serves ~6).",
+      "image_url": "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_2965e321f1",
+      "kitchen_notes": "",
+      "name": "Masala Tea Pitcher",
+      "prep_notes": "",
+      "short_description": "Cardamom-clove chai brewed the Kolkata way (serves ~6).",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "beverage",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1499,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Extra-milky, extra-sweet Bengali tea (serves ~6).",
+      "image_url": "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_95bb4fcf2b",
+      "kitchen_notes": "",
+      "name": "Bengali Doodh Cha Pitcher",
+      "prep_notes": "",
+      "short_description": "Extra-milky, extra-sweet Bengali tea (serves ~6).",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "beverage",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1499,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "South-Indian filter coffee \u2014 smooth and aromatic.",
+      "image_url": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_f5144c4780",
+      "kitchen_notes": "",
+      "name": "Coffee Pitcher",
+      "prep_notes": "",
+      "short_description": "South-Indian filter coffee \u2014 smooth and aromatic.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "beverage",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 0,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Full self-serve tea + coffee service for events.",
+      "image_url": "https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_53a7bdb897",
+      "kitchen_notes": "",
+      "name": "Tea & Coffee Station",
+      "prep_notes": "",
+      "short_description": "Full self-serve tea + coffee service for events.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "beverage",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 0,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Assorted chilled soft drinks (Coke, Sprite, Thums Up).",
+      "image_url": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_92b9e4738f",
+      "kitchen_notes": "",
+      "name": "Soft Drink Service",
+      "prep_notes": "",
+      "short_description": "Assorted chilled soft drinks (Coke, Sprite, Thums Up).",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "veg",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 999,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Baby potatoes slow-cooked in spiced tomato-onion gravy.",
+      "image_url": "https://images.unsplash.com/photo-1567337710282-00832b415979?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_a9d657cdb4",
+      "kitchen_notes": "",
+      "name": "Aloor Dom",
+      "prep_notes": "",
+      "short_description": "Baby potatoes slow-cooked in spiced tomato-onion gravy.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "veg",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1099,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Banana-flower cooked with coconut, cumin and ghee.",
+      "image_url": "https://images.unsplash.com/photo-1625944230945-1b7dd3b949ab?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_29a5441160",
+      "kitchen_notes": "",
+      "name": "Mochar Ghonto",
+      "prep_notes": "",
+      "short_description": "Banana-flower cooked with coconut, cumin and ghee.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "veg",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 999,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Bengali medley of bitter and sweet vegetables in a milky broth.",
+      "image_url": "https://images.unsplash.com/photo-1631515243349-e0cb75fb8d3a?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_8bc124cc77",
+      "kitchen_notes": "",
+      "name": "Shukto",
+      "prep_notes": "",
+      "short_description": "Bengali medley of bitter and sweet vegetables in a milky broth.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "veg",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 999,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Seasonal vegetables in a light Bengali panch-phoron gravy.",
+      "image_url": "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_076630b785",
+      "kitchen_notes": "",
+      "name": "Mixed Vegetable Curry",
+      "prep_notes": "",
+      "short_description": "Seasonal vegetables in a light Bengali panch-phoron gravy.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [
+        "dairy"
+      ],
+      "category": "veg",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1299,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Cottage cheese in a rich tomato-butter gravy.",
+      "image_url": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_343d7b3edd",
+      "kitchen_notes": "",
+      "name": "Paneer Butter Masala",
+      "prep_notes": "",
+      "short_description": "Cottage cheese in a rich tomato-butter gravy.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "curry",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1799,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Bengali-style caramelised chicken with warm mustard-cumin masala.",
+      "image_url": "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_37f88e039c",
+      "kitchen_notes": "",
+      "name": "Chicken Kosha",
+      "prep_notes": "",
+      "short_description": "Bengali-style caramelised chicken with warm mustard-cumin masala.",
+      "spice_level": "medium",
+      "veg_type": "non-vegetarian"
+    },
+    {
+      "allergens": [
+        "seafood"
+      ],
+      "category": "curry",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1599,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Rohu fish curry in a rich onion-tomato gravy.",
+      "image_url": "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_2896c634d4",
+      "kitchen_notes": "",
+      "name": "Rui Kalia",
+      "prep_notes": "",
+      "short_description": "Rohu fish curry in a rich onion-tomato gravy.",
+      "spice_level": "medium",
+      "veg_type": "non-vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "curry",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1199,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Boiled eggs simmered in Bengali onion-tomato curry.",
+      "image_url": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_b686963790",
+      "kitchen_notes": "",
+      "name": "Egg Curry",
+      "prep_notes": "",
+      "short_description": "Boiled eggs simmered in Bengali onion-tomato curry.",
+      "spice_level": "medium",
+      "veg_type": "eggitarian"
+    },
+    {
+      "allergens": [],
+      "category": "curry",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1899,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "White chicken curry cooked in yogurt, cashew and rosewater.",
+      "image_url": "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_eb00944a8c",
+      "kitchen_notes": "",
+      "name": "Chicken Rezala",
+      "prep_notes": "",
+      "short_description": "White chicken curry cooked in yogurt, cashew and rosewater.",
+      "spice_level": "medium",
+      "veg_type": "non-vegetarian"
+    },
+    {
+      "allergens": [
+        "seafood"
+      ],
+      "category": "curry",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 2299,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Prawns in a creamy coconut-milk gravy \u2014 Bengali royalty.",
+      "image_url": "https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_405fe91b38",
+      "kitchen_notes": "",
+      "name": "Chingri Malaikari",
+      "prep_notes": "",
+      "short_description": "Prawns in a creamy coconut-milk gravy \u2014 Bengali royalty.",
+      "spice_level": "medium",
+      "veg_type": "non-vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "curry",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1999,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Slow-braised chicken in yogurt-cashew Mughlai gravy.",
+      "image_url": "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_c5360805b1",
+      "kitchen_notes": "",
+      "name": "Chicken Chaap",
+      "prep_notes": "",
+      "short_description": "Slow-braised chicken in yogurt-cashew Mughlai gravy.",
+      "spice_level": "medium",
+      "veg_type": "non-vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "rice",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1099,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Saffron-turmeric sweet pulao with cashews and raisins.",
+      "image_url": "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_190e1decca",
+      "kitchen_notes": "",
+      "name": "Basanti Pulao",
+      "prep_notes": "",
+      "short_description": "Saffron-turmeric sweet pulao with cashews and raisins.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "rice",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 399,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Long-grain white rice served hot.",
+      "image_url": "https://images.unsplash.com/photo-1516684732162-798a0062be99?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_4f4bf06e87",
+      "kitchen_notes": "",
+      "name": "Steamed Rice",
+      "prep_notes": "",
+      "short_description": "Long-grain white rice served hot.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [
+        "dairy"
+      ],
+      "category": "dessert",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 549,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Bengali rice pudding slow-cooked with jaggery and cardamom.",
+      "image_url": "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_42ecae169f",
+      "kitchen_notes": "",
+      "name": "Payesh",
+      "prep_notes": "",
+      "short_description": "Bengali rice pudding slow-cooked with jaggery and cardamom.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [
+        "dairy"
+      ],
+      "category": "dessert",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 599,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Deep-fried khoya dumplings in cardamom sugar syrup.",
+      "image_url": "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_55c829e18e",
+      "kitchen_notes": "",
+      "name": "Pantua",
+      "prep_notes": "",
+      "short_description": "Deep-fried khoya dumplings in cardamom sugar syrup.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [
+        "dairy"
+      ],
+      "category": "dessert",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 699,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "King-sized rosogolla stuffed with saffron and cardamom.",
+      "image_url": "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_8efc17b318",
+      "kitchen_notes": "",
+      "name": "Rajbhog",
+      "prep_notes": "",
+      "short_description": "King-sized rosogolla stuffed with saffron and cardamom.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "starter",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 299,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Fresh cucumber, radish, onion and lemon salad.",
+      "image_url": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_0626c54569",
+      "kitchen_notes": "",
+      "name": "Bengali Salad",
+      "prep_notes": "",
+      "short_description": "Fresh cucumber, radish, onion and lemon salad.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "starter",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 299,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Sweet-tangy mango chutney with Bengali mustard.",
+      "image_url": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_86c1386e38",
+      "kitchen_notes": "",
+      "name": "Aam Kasundi Chutney",
+      "prep_notes": "",
+      "short_description": "Sweet-tangy mango chutney with Bengali mustard.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "starter",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 299,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Assorted roasted and fried papads.",
+      "image_url": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_6da345328a",
+      "kitchen_notes": "",
+      "name": "Papad Platter",
+      "prep_notes": "",
+      "short_description": "Assorted roasted and fried papads.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [
+        "gluten"
+      ],
+      "category": "starter",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 200,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "A beloved Bengali street-food classic, Vegetable Chop is a crisp golden fritter filled with mashed potato, beetroot, peas, and fragrant spices. Each bite gives you a crunchy coating and a soft, flavorful interior that\u2019s tangy, comforting, and perfect with kasundi or ketchup.",
+      "image_url": "",
+      "is_active": true,
+      "item_id": "mi_97f0cb948c",
+      "kitchen_notes": "",
+      "name": "Vegetable Chop",
+      "prep_notes": "",
+      "short_description": "Crispy Bengali veg patty with a warmly spiced, savory center",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [
+        "nuts"
+      ],
+      "category": "main-veg",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 2000,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "A beloved Bengali classic, Bhindi Aloo Posto pairs tender okra and soft potatoes with a silky, nutty poppy seed paste. Lightly spiced and delicately tempered, it delivers a comforting, earthy flavor with a satisfyingly dry, homestyle finish.",
+      "image_url": "https://curry-ecosystem.preview.emergentagent.com/api/uploads/menu/b368c8c6cb744795826b5a3345721b2f.png",
+      "is_active": true,
+      "item_id": "mi_e871fb6c39",
+      "kitchen_notes": "",
+      "name": "Bhindi Aloo Posto",
+      "prep_notes": "",
+      "short_description": "Tender okra and potatoes tossed in fragrant poppy seed paste",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [
+        "seafood"
+      ],
+      "category": "curry",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 2000,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Shorshe Rui features juicy Rui fish pieces gently cooked in a pungent Bengali mustard sauce, blended with green chilies, mustard oil, and a touch of turmeric. The result is bold, tangy, and silky, with the fish soaking up every bit of the deeply flavorful shorshe.",
+      "image_url": "https://curry-ecosystem.preview.emergentagent.com/api/uploads/menu/64407ec07b6e4f37ba45784214a7492c.png",
+      "is_active": true,
+      "item_id": "mi_1dc1d2d761",
+      "kitchen_notes": "",
+      "name": "Shorshe Rui ( 6 Psc.)",
+      "prep_notes": "",
+      "short_description": "Tender Rui fish in a sharp, aromatic mustard gravy.",
+      "spice_level": "hot",
+      "veg_type": "non-vegetarian"
+    },
+    {
+      "allergens": [
+        "dairy",
+        "nuts"
+      ],
+      "category": "curry",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 2000,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Cholar Daal is a classic Bengali delicacy made with chana dal simmered until tender in a fragrant blend of ginger, bay leaf, cinnamon, and cardamom. Finished with coconut and a touch of ghee, it\u2019s rich, lightly sweet, and comforting\u2014perfect alongside luchi or steaming rice.",
+      "image_url": "https://curry-ecosystem.preview.emergentagent.com/api/uploads/menu/ebe7e24999764afd8bd315110e3837e4.png",
+      "is_active": true,
+      "item_id": "mi_15538382d8",
+      "kitchen_notes": "",
+      "name": "Cholar Daal",
+      "prep_notes": "",
+      "short_description": "A festive Bengali lentil delight with coconut, ghee, and warm spices.",
+      "spice_level": "mild",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [
+        "nuts"
+      ],
+      "category": "main-veg",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1800,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Tender potatoes are slow-cooked with a fragrant posto paste, mustard oil, and a hint of green chili for that signature Bengali comfort. Simple yet deeply satisfying, this dish brings a silky, earthy texture and delicate nuttiness that pairs beautifully with steaming rice or luchi.",
+      "image_url": "https://curry-ecosystem.preview.emergentagent.com/api/uploads/menu/7ceba1df882745c1a7f7a6fdf999d2ed.png",
+      "is_active": true,
+      "item_id": "mi_794d7adc62",
+      "kitchen_notes": "",
+      "name": "Aloo Posto",
+      "prep_notes": "",
+      "short_description": "Classic Bengali potatoes in a nutty poppy seed masala.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [
+        "nuts"
+      ],
+      "category": "main-veg",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 1800,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Tender potatoes are slow-cooked with a fragrant posto paste, mustard oil, and a hint of green chili for that signature Bengali comfort. Simple yet deeply satisfying, this dish brings a silky, earthy texture and delicate nuttiness that pairs beautifully with steaming rice or luchi.",
+      "image_url": "https://curry-ecosystem.preview.emergentagent.com/api/uploads/menu/7ceba1df882745c1a7f7a6fdf999d2ed.png",
+      "is_active": true,
+      "item_id": "mi_2e3b01ffb4",
+      "kitchen_notes": "",
+      "name": "Aloo Posto (Copy)",
+      "prep_notes": "",
+      "short_description": "Classic Bengali potatoes in a nutty poppy seed masala.",
+      "spice_level": "medium",
+      "veg_type": "vegetarian"
+    },
+    {
+      "allergens": [],
+      "category": "starter",
+      "cost_price_cents": 0,
+      "cuisine": "bengali",
+      "default_price_cents": 799,
+      "display_order": 0,
+      "extra_images": [],
+      "full_description": "Grilled chicken tikka in a soft paratha with mint chutney.",
+      "image_url": "https://images.unsplash.com/photo-1633945274309-2c16c96d020a?auto=format&fit=crop&w=800&q=80",
+      "is_active": true,
+      "item_id": "mi_93a90ad1e4",
+      "kitchen_notes": "",
+      "name": "Chicken Kathi Roll",
+      "prep_notes": "",
+      "short_description": "Grilled chicken tikka in a soft paratha with mint chutney.",
+      "spice_level": "medium",
+      "veg_type": "non-vegetarian"
+    }
+  ],
+  "weekly_menus": [
+    {
+      "alacarte_enabled": false,
+      "banner_image_url": "",
+      "description": "Slow-cooked Bengali comfort food, delivered fresh.",
+      "items": [],
+      "lines": [
+        {
+          "availability": "available",
+          "display_order": 0,
+          "is_featured": true,
+          "line_id": "wl_a28fb121a4",
+          "master_item_id": "mi_e269969f75",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 4
+        },
+        {
+          "availability": "available",
+          "display_order": 1,
+          "is_featured": false,
+          "line_id": "wl_85630a1321",
+          "master_item_id": "mi_e87255dd34",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 2,
+          "is_featured": false,
+          "line_id": "wl_007f945f21",
+          "master_item_id": "mi_932dae129b",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 3,
+          "is_featured": false,
+          "line_id": "wl_7960554a18",
+          "master_item_id": "mi_abfe9bd9d7",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 4,
+          "is_featured": true,
+          "line_id": "wl_24fa9a4a8c",
+          "master_item_id": "mi_ce5eaabf67",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 5,
+          "is_featured": false,
+          "line_id": "wl_10dbcb96ee",
+          "master_item_id": "mi_6badd83a15",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 6,
+          "is_featured": true,
+          "line_id": "wl_97a9e39306",
+          "master_item_id": "mi_a7f9784b07",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 7,
+          "is_featured": true,
+          "line_id": "wl_82954a5f88",
+          "master_item_id": "mi_cd32e73377",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        }
+      ],
+      "menu_id": "menu_050616ebb2",
+      "package": {
+        "description": "",
+        "eligible_master_ids": [],
+        "image_url": "",
+        "item_surcharges_cents": {
+          "mi_932dae129b": 500
+        },
+        "name": "New Combo",
+        "package_id": "wpkg_ca06de2a2e",
+        "pick_count": 6,
+        "price_cents": 8900
+      },
+      "package_enabled": true,
+      "published": true,
+      "status": "published",
+      "title": "This Week's Bengali Table",
+      "week_end": "2026-08-29",
+      "week_start": "2026-08-23"
+    },
+    {
+      "alacarte_enabled": true,
+      "banner_image_url": "",
+      "description": "Slow-cooked Bengali comfort food, delivered fresh.",
+      "items": [],
+      "lines": [
+        {
+          "availability": "available",
+          "display_order": 0,
+          "is_featured": true,
+          "line_id": "wl_47028ec945",
+          "master_item_id": "mi_e269969f75",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 1,
+          "is_featured": false,
+          "line_id": "wl_e2bf8c5c54",
+          "master_item_id": "mi_e87255dd34",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 2,
+          "is_featured": false,
+          "line_id": "wl_65162959f6",
+          "master_item_id": "mi_932dae129b",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 3,
+          "is_featured": true,
+          "line_id": "wl_d741277760",
+          "master_item_id": "mi_abfe9bd9d7",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 4,
+          "is_featured": false,
+          "line_id": "wl_fd2fab529d",
+          "master_item_id": "mi_ce5eaabf67",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 5,
+          "is_featured": false,
+          "line_id": "wl_2f7ef022d1",
+          "master_item_id": "mi_6badd83a15",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 6,
+          "is_featured": true,
+          "line_id": "wl_a28f2f1398",
+          "master_item_id": "mi_a7f9784b07",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 7,
+          "is_featured": true,
+          "line_id": "wl_ad77038cba",
+          "master_item_id": "mi_cd32e73377",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        }
+      ],
+      "menu_id": "menu_0030733ddf",
+      "package": {
+        "description": "",
+        "eligible_master_ids": [],
+        "image_url": "",
+        "item_surcharges_cents": {
+          "mi_e269969f75": 500
+        },
+        "name": "This Week's Combo",
+        "package_id": "wpkg_579a63464c",
+        "pick_count": 3,
+        "price_cents": 7500
+      },
+      "package_enabled": true,
+      "published": true,
+      "status": "published",
+      "title": "Next Week: Riverside Specials",
+      "week_end": "2026-09-05",
+      "week_start": "2026-08-30"
+    },
+    {
+      "alacarte_enabled": true,
+      "banner_image_url": "",
+      "description": "Slow-cooked Bengali comfort food, delivered fresh.",
+      "items": [],
+      "lines": [
+        {
+          "availability": "available",
+          "display_order": 0,
+          "is_featured": true,
+          "line_id": "wl_bbadc9ad09",
+          "master_item_id": "mi_e269969f75",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 1,
+          "is_featured": false,
+          "line_id": "wl_c24871252b",
+          "master_item_id": "mi_e87255dd34",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 2,
+          "is_featured": true,
+          "line_id": "wl_ee14e14133",
+          "master_item_id": "mi_932dae129b",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 3,
+          "is_featured": false,
+          "line_id": "wl_9cd44699a4",
+          "master_item_id": "mi_abfe9bd9d7",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 4,
+          "is_featured": false,
+          "line_id": "wl_e264202b28",
+          "master_item_id": "mi_ce5eaabf67",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 5,
+          "is_featured": false,
+          "line_id": "wl_4faead7341",
+          "master_item_id": "mi_6badd83a15",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 6,
+          "is_featured": true,
+          "line_id": "wl_64e032c231",
+          "master_item_id": "mi_a7f9784b07",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        },
+        {
+          "availability": "available",
+          "display_order": 7,
+          "is_featured": true,
+          "line_id": "wl_791504d357",
+          "master_item_id": "mi_cd32e73377",
+          "price_override_cents": null,
+          "stock_limit": null,
+          "stock_used": 0
+        }
+      ],
+      "menu_id": "menu_7675ae5ee5",
+      "package": null,
+      "package_enabled": false,
+      "published": true,
+      "status": "published",
+      "title": "Week After: Kolkata Street Feast",
+      "week_end": "2026-09-12",
+      "week_start": "2026-09-06"
+    }
+  ]
+}

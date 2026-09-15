@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Curry &amp; Co. — Sales Pitch Deck</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 14mm 14mm; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #1F2937;
+    font-size: 10.5pt;
+    line-height: 1.45;
+    background: #ffffff;
+  }
+  .cover {
+    background: linear-gradient(135deg, #B14F36 0%, #7C2D12 100%);
+    color: #FFF7ED;
+    padding: 26px 28px;
+    border-radius: 14px;
+    margin-bottom: 18px;
+  }
+  .cover h1 {
+    font-size: 28pt;
+    margin: 0 0 6px 0;
+    letter-spacing: -0.5px;
+    font-weight: 900;
+  }
+  .cover .tag {
+    font-size: 12pt;
+    opacity: 0.95;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .cover .sub {
+    font-size: 10pt;
+    opacity: 0.9;
+    font-style: italic;
+  }
+  h2 {
+    font-size: 15pt;
+    color: #B14F36;
+    margin: 18px 0 4px 0;
+    padding-bottom: 4px;
+    border-bottom: 2px solid #FDE68A;
+    font-weight: 800;
+  }
+  h2 .emoji { margin-right: 6px; }
+  h3 {
+    font-size: 11pt;
+    color: #1F2937;
+    margin: 10px 0 4px 0;
+    font-weight: 800;
+  }
+  .position {
+    font-style: italic;
+    color: #6B7280;
+    font-size: 10pt;
+    margin: 2px 0 8px 0;
+  }
+  ul {
+    margin: 4px 0 8px 18px;
+    padding: 0;
+  }
+  li {
+    margin-bottom: 3px;
+  }
+  li b { color: #7C2D12; }
+  .quote {
+    border-left: 3px solid #00A651;
+    background: #F0FDF4;
+    padding: 8px 12px;
+    font-style: italic;
+    color: #14532D;
+    font-size: 10pt;
+    margin: 8px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 6px;
+  }
+  .card {
+    background: #FFF7ED;
+    border: 1px solid #FED7AA;
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .card h3 { margin-top: 0; }
+  table.compare {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+    margin-top: 6px;
+  }
+  table.compare th, table.compare td {
+    border: 1px solid #E5E7EB;
+    padding: 6px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.compare th {
+    background: #B14F36;
+    color: #fff;
+    font-weight: 700;
+  }
+  table.compare td.before { background: #FEF2F2; color: #7F1D1D; }
+  table.compare td.after { background: #F0FDF4; color: #14532D; }
+  .stack {
+    background: #F9FAFB;
+    border-left: 3px solid #B14F36;
+    padding: 8px 12px;
+    font-size: 10pt;
+    border-radius: 0 6px 6px 0;
+    margin-top: 6px;
+  }
+  .cta {
+    background: linear-gradient(135deg, #166534 0%, #14532D 100%);
+    color: #fff;
+    padding: 14px 18px;
+    border-radius: 10px;
+    text-align: center;
+    margin-top: 14px;
+  }
+  .cta h2 {
+    color: #FDE68A;
+    border: none;
+    margin: 0 0 6px 0;
+    font-size: 14pt;
+  }
+  .cta p { margin: 4px 0; }
+  .footer {
+    margin-top: 12px;
+    color: #9CA3AF;
+    font-size: 8pt;
+    text-align: center;
+    font-style: italic;
+  }
+  .pageBreak { page-break-before: always; }
+  .badge {
+    display: inline-block;
+    background: #FDE68A;
+    color: #78350F;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 8.5pt;
+    font-weight: 700;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>🍛 Curry &amp; Co.</h1>
+  <div class="tag">The end-to-end platform powering Bengali &amp; Indian cloud-kitchen deliveries across the Greater Toronto Area.</div>
+  <div class="sub">One brand. Three purpose-built apps. Zero moving parts to manage.</div>
+</div>
+
+<h2><span class="emoji">🛒</span>1. Customer App <span class="badge">iOS · Android · Web</span></h2>
+<div class="position"><em>Positioning:</em> A native mobile experience that turns a chaotic weekly meal decision into a two-tap ritual.</div>
+
+<h3>Headline Features</h3>
+<ul>
+  <li><b>Dynamic Weekly Menus</b> — refreshed every Sunday. Order Sun–Thu, delivered Fri–Sat. Creates urgency + predictable kitchen ops.</li>
+  <li><b>Two Menu Modes, One Tap Away</b>
+    <ul>
+      <li>🍽️ <b>À la carte</b> — pick any dish, any quantity</li>
+      <li>📦 <b>Weekly Package Combo</b> — “Pick 4 items for $59” flat-price bundles with live savings indicator</li>
+    </ul>
+  </li>
+  <li><b>Catering Packages v2</b> — per-person pricing, customizable guest count (min 10), mandatory + optional add-ons, tiered upgrades, automatic upcharges.</li>
+  <li><b>Unified “Bag” Tab</b> — active cart <em>and</em> past orders in one place. Reorder in one tap.</li>
+  <li><b>Guest Checkout + Google Sign-In</b> — no friction, no forced accounts.</li>
+  <li><b>Live Order Tracking</b> — real-time driver location, live ETA, status timeline.</li>
+  <li><b>Flexible Payments</b> — Stripe (card) + Cash on Delivery. Failed Stripe payments auto-drop (no ghost orders).</li>
+  <li><b>Coupons &amp; Loyalty</b> — promo codes at checkout, savings line, admin-toggled tax.</li>
+  <li><b>Bengali-first branding</b> with a warm, appetite-triggering visual palette.</li>
+</ul>
+
+<div class="quote">“Fast, gestural, native-feeling. No web forms, no dead-ends. Feels like their favourite ride-share app — but for home-style dinners.”</div>
+
+<h2><span class="emoji">🚗</span>2. Delivery Partner App <span class="badge">iOS · Android</span></h2>
+<div class="position"><em>Positioning:</em> Fleet-ready routing that turns any partner phone into a professional last-mile terminal.</div>
+
+<h3>Headline Features</h3>
+<ul>
+  <li><b>Interactive Zoomable Google Map</b> — pinch, pan, tap. Numbered A/B/C… stops + start marker + live polyline route.</li>
+  <li><b>Google-Optimized Multi-Stop Routing</b> — one tap → shortest total-time sequence via Google Directions.</li>
+  <li><b>Address-Based Start Point</b> — type any address and geocoding turns it into coordinates. Or one-tap “Use my location”.</li>
+  <li><b>Manual Reorder</b> — chevron ⬆⬇ on any stop; ETA + polyline + map auto-recalculates in seconds.</li>
+  <li><b>Tap-to-Navigate</b> — every stop tile deep-links to Google Maps turn-by-turn directions from origin.</li>
+  <li><b>Customer Context on Each Stop</b> — name, address, order total, ID, distance, ETA — all glanceable.</li>
+  <li><b>START DELIVERY Button</b> — one tap: flips all orders to “on the way”, broadcasts driver location every 10s, powers the customer’s Live Tracking with real ETA.</li>
+  <li><b>Journey Persistence</b> — driver logs out mid-shift? Logs back in → exact route + progress restored.</li>
+  <li><b>Auto-End on Completion</b> — journey closes automatically once every stop is marked delivered.</li>
+  <li><b>Location Heartbeat</b> — 30s idle / 10s active, keeps ops + customers in sync.</li>
+</ul>
+
+<div class="quote">“Zero paperwork. Zero radio calls. The phone tells them where to go, in what order, and updates the customer for them.”</div>
+
+<div class="pageBreak"></div>
+
+<h2><span class="emoji">🖥️</span>3. Admin Web Portal <span class="badge">Browser · No install</span></h2>
+<div class="position"><em>Positioning:</em> A single dashboard replacing spreadsheets, WhatsApp groups and third-party POS bolt-ons.</div>
+
+<div class="grid">
+  <div class="card">
+    <h3>📊 Live Dashboard</h3>
+    Today’s orders, revenue, deliveries in progress — at a glance.
+  </div>
+  <div class="card">
+    <h3>📖 Master Menu</h3>
+    Single source of truth for every dish, cuisine, category, base price. Weekly menus pull from here with per-week overrides.
+  </div>
+  <div class="card">
+    <h3>🗓️ Weekly Menu Builder</h3>
+    Schedule Sunday drops, publish/unpublish, toggle À la carte vs Package combo, set “Pick X for $Y” bundle logic.
+  </div>
+  <div class="card">
+    <h3>🎉 Catering Configurator (v2)</h3>
+    Per-person tiers, mandatory item groups, optional upgrades, guest minimums, custom upcharges — no code required.
+  </div>
+  <div class="card">
+    <h3>📦 Order Management</h3>
+    Filter by status, payment, slot, customer. One-click assign to a delivery partner.
+  </div>
+  <div class="card">
+    <h3>🚴 Delivery Partner Mgmt</h3>
+    Onboard drivers (email + password), assign vehicles, track active journeys.
+  </div>
+</div>
+
+<h3>Upcoming — Wave 2 (in progress)</h3>
+<ul>
+  <li>Customer Management (users, order history, credits, blocks)</li>
+  <li>Promotions / Coupons builder (à la carte + catering)</li>
+  <li>Reviews Moderation</li>
+  <li>Reports &amp; CSV export (sales, top items, driver performance)</li>
+  <li>Broadcast notifications (email + push)</li>
+</ul>
+
+<div class="quote">“Every business-critical action — menu, orders, drivers, promos — is 1–2 clicks away in a web browser. No app to install, no console to SSH into.”</div>
+
+<h2><span class="emoji">💰</span>The Business Case</h2>
+<table class="compare">
+  <thead>
+    <tr>
+      <th style="width:24%">&nbsp;</th>
+      <th>Before Curry &amp; Co.</th>
+      <th>With Curry &amp; Co.</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><b>Customer ordering</b></td>       <td class="before">Instagram DMs + spreadsheets</td>  <td class="after">Native app, live tracking</td></tr>
+    <tr><td><b>Weekly menu switch</b></td>      <td class="before">Manual poster + WhatsApp</td>      <td class="after">1 click, propagates everywhere</td></tr>
+    <tr><td><b>Driver dispatch</b></td>         <td class="before">Phone calls + printed lists</td>   <td class="after">Auto-optimized routes, live ETA</td></tr>
+    <tr><td><b>Payment reconciliation</b></td>  <td class="before">Manual e-transfer chasing</td>     <td class="after">Stripe + COD + auto-fail handling</td></tr>
+    <tr><td><b>Catering quotes</b></td>         <td class="before">Emails back and forth</td>         <td class="after">Self-serve customizer, per-person pricing</td></tr>
+    <tr><td><b>Data &amp; reports</b></td>      <td class="before">❌</td>                            <td class="after">Live dashboard + CSV exports (soon)</td></tr>
+  </tbody>
+</table>
+
+<div class="stack">
+  <b>Built on a modern, scalable stack:</b><br/>
+  <b>Frontend</b> — React Native / Expo Router (iOS + Android + Web from one codebase) &nbsp;·&nbsp;
+  <b>Backend</b> — FastAPI + MongoDB (cloud-native, horizontally scalable) &nbsp;·&nbsp;
+  <b>Integrations</b> — Google Maps (routing + geocoding), Stripe, Google OAuth, Emergent Push Notifications &nbsp;·&nbsp;
+  <b>Deployment</b> — one-click publish → App Store + Play Store + Web
+</div>
+
+<div class="cta">
+  <h2>🎯 The Ask</h2>
+  <p>Curry &amp; Co. is <b>production-ready today</b> for the GTA.</p>
+  <p>Ready to onboard your first <b>10 restaurants</b> and <b>25 delivery partners</b> in under <b>30 days</b>.</p>
+  <p style="margin-top:8px;"><b>Contact:</b> admin@curryandco.local &nbsp;·&nbsp; Live demo available on request.</p>
+</div>
+
+<div class="footer">Curry &amp; Co. — Sales Pitch Deck · June 2026 · Confidential</div>
+
+</body>
+</html>

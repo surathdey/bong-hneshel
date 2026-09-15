@@ -1,0 +1,995 @@
+{
+  "master_menu": [
+    {
+      "name": "Mughlai Paratha",
+      "category": "bread",
+      "cuisine": "bengali",
+      "veg_type": "eggitarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Flaky, golden paratha stuffed with rich Mughlai goodness",
+      "full_description": "A classic Kolkata-style Mughlai paratha, crisp and golden outside with a soft, savory filling tucked inside. Made with spiced egg, minced meat-style richness, and aromatic masala flavors, it delivers a satisfying bite with every tear and dip.",
+      "allergens": [
+        "dairy",
+        "gluten"
+      ],
+      "always_available": true,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/1dc38d482c874527904199da04c2ee1a.png"
+    },
+    {
+      "name": "Roti",
+      "category": "bread",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "mild",
+      "price_cad": 15.99,
+      "short_description": "Soft, freshly made roti with a warm, comforting homemade touch",
+      "full_description": "Freshly rolled and cooked to a gentle golden finish, this classic roti brings the simple comfort of home-style Indian bread to your table. Light, soft, and perfect for scooping up curries, gravies, and dals, it’s a timeless companion to any meal.",
+      "allergens": [
+        "gluten"
+      ],
+      "always_available": true,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/02e6445f32354432bc46f264aec86501.png"
+    },
+    {
+      "name": "Gur er Payesh",
+      "category": "dessert",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "mild",
+      "price_cad": 15.99,
+      "short_description": "Creamy Bengali rice pudding with fragrant jaggery sweetness",
+      "full_description": "A beloved Bengali classic, Gur er Payesh is slow-cooked with milk, rice, and rich nolen gur for a deep caramel-like sweetness. Silky, aromatic, and comforting, each spoonful carries the warmth of tradition and the delicate flavor of winter festivities.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/b5de4c6c4cf74c5296b12a57d532408e.png"
+    },
+    {
+      "name": "Aloo Bori diye Pabda",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Delicate pabda fish simmered with potatoes and crunchy bori.",
+      "full_description": "A beloved Bengali home-style dish, Aloo Bori diye Pabda features tender pabda fish gently cooked with soft potatoes and tiny, savory lentil boris. The light, mustard-kissed gravy brings out the fish's delicate sweetness, while the bori adds a rustic, comforting texture in every bite.",
+      "allergens": [
+        "seafood"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/9e1d3abab1104f7b85a11ce8ca2c3c91.png"
+    },
+    {
+      "name": "Anda Tadka",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "eggitarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Spicy, smoky eggs simmered in a bold mustard-kissed masala.",
+      "full_description": "Anda Tadka features perfectly cooked eggs tossed in a fiery, aromatic onion-tomato gravy with ginger, garlic, and warming Indian spices. Finished with a sizzling tadka, it delivers rich, smoky depth and a hearty, comforting bite that pairs beautifully with rice or naan.",
+      "allergens": [],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/b7b8b7fb071d415eb3cbd56c807256f8.png"
+    },
+    {
+      "name": "Chicken Aloo Jhol",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Tender chicken and soft potatoes simmered in a light, fragrant Bengali gravy.",
+      "full_description": "Chicken Aloo Jhol is a comforting Bengali-style curry made with juicy chicken pieces, tender potatoes, and a thin, flavourful gravy infused with warm spices. Light yet deeply satisfying, it’s the kind of homestyle dish that tastes best with steamed rice, soaking up every drop of the delicate jhol.",
+      "allergens": [],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/177e97a0bb3c4aa5bbe1d295856bf2e3.png"
+    },
+    {
+      "name": "Chicken Dak Bunglow",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Fragrant chicken curry with rustic mustard warmth and rich, homestyle depth.",
+      "full_description": "Chicken Dak Bunglow is a nostalgic Bengali-style curry inspired by the old dak bungalow kitchens, where tender chicken was slow-cooked with onions, spices, eggs, and a touch of mustard for deep, comforting flavor. The gravy is rich and aromatic, with a homestyle balance of heat, earthiness, and subtle tang that clings beautifully to rice or luchi.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/bcf6e3f6379d423e9c691573e0cf5cf7.png"
+    },
+    {
+      "name": "Data diye Chingri Mach",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Juicy prawns cooked in a bold, mustard-kissed Bengali gravy",
+      "full_description": "Succulent chingri mach is simmered in a fragrant Bengali-style curry with mustard, spices, and a rich, savory finish. The result is a beautifully balanced dish with tender prawns, punchy flavor, and that signature mustard Garden warmth that pairs perfectly with steamed rice.",
+      "allergens": [
+        "seafood",
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/1469d08ffd4a474b81d65db5dee06acc.png"
+    },
+    {
+      "name": "Dim Aloo Dalna",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "eggitarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Classic Bengali egg and potato curry, warm and soul-satisfying",
+      "full_description": "Dim Aloo Dalna is a comforting Bengali homestyle curry featuring tender potatoes and boiled eggs simmered in a lightly spiced tomato-onion gravy. Finished with fragrant whole spices, this rustic dish delivers soft, creamy textures and a savory warmth that pairs beautifully with steaming rice or luchi.",
+      "allergens": [],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/743a007eca504eae81813fd130bc3037.png"
+    },
+    {
+      "name": "Dimer Jhol",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "eggitarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Rustic Bengali egg curry in a light, fragrant mustard-spiced gravy",
+      "full_description": "Dimer Jhol is a comforting Bengali classic featuring boiled eggs simmered in a thin, flavorful gravy with potatoes, tomatoes, and warm whole spices. Light yet deeply satisfying, it pairs beautifully with rice and brings home-style coastal Bengali warmth to every bite.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/c33d08219ad9484b9d7b812d69589106.png"
+    },
+    {
+      "name": "Doi Rui",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Tender rohu fish simmered in silky, tangy yogurt gravy",
+      "full_description": "Doi Rui is a beloved Bengali delicacy featuring soft rohu fish gently cooked in a rich yogurt-based gravy. The sauce is delicately spiced with aromatic whole spices, creating a mellow, creamy, and tangy flavor that beautifully coats every bite.",
+      "allergens": [
+        "dairy",
+        "seafood"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/1b36db622b844735a05329b11d9ea589.png"
+    },
+    {
+      "name": "Gondhoraj Mutton",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Fragrant mutton kissed with the citrusy aroma of Gondhoraj lime",
+      "full_description": "Tender mutton is slow-cooked in a deeply spiced Bengali-style gravy and finished with the unmistakable perfume of Gondhoraj lime. The result is rich, aromatic, and beautifully balanced, with juicy meat and a bright citrus lift that makes every bite memorable.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/0d6ba6eb4f994391ba3c51fe05c3f82d.png"
+    },
+    {
+      "name": "Lau Chingri",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Tender bottle gourd simmered with juicy prawns in a fragrant Bengali gravy.",
+      "full_description": "Lau Chingri is a beloved Bengali home-style dish where soft, delicate bottle gourd is cooked with plump prawns in a light, aromatic gravy. Finished with warm spices and a hint of mustardy richness, it offers a comforting balance of sweetness, savoriness, and coastal flavor.",
+      "allergens": [
+        "seafood"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/30af5444c3d4470b995bfe0f29ea819e.png"
+    },
+    {
+      "name": "Lebu Lonka Chicken",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "hot",
+      "price_cad": 15.99,
+      "short_description": "Zesty chicken tossed in fiery green chili and lemony Bangla flair",
+      "full_description": "Tender chicken is wok-tossed with sharp lebu, fresh lonka, and aromatic spices for a bright, punchy bite. This Bengali-style favorite balances tangy citrus heat with savory depth, making every mouthful bold, juicy, and irresistibly addictive.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/2c9013182c704c099f4eeee761155e17.png"
+    },
+    {
+      "name": "Morich Chicken",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "hot",
+      "price_cad": 15.99,
+      "short_description": "Fiery, fragrant chicken with a bold mustard-kissed Bengali kick",
+      "full_description": "Morich Chicken is a bold Bengali-style chicken preparation coated in a vibrant chili-forward masala, balanced with warm spices and a hint of mustardy depth. Tender pieces are cooked until succulent and richly flavored, making every bite smoky, spicy, and irresistibly aromatic.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/9d71cede07e247b0b57f138208172462.png"
+    },
+    {
+      "name": "Murgir Laal Jhol",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Tender chicken simmered in a vibrant, aromatic Bengali red gravy",
+      "full_description": "Murgir Laal Jhol is a classic Bengali chicken curry cooked in a light yet deeply flavorful red gravy. Tender pieces of chicken are slow-simmered with onion, ginger, garlic, tomatoes, and warming spices, creating a soulful dish with a silky texture and a gentle, homestyle heat.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/e95746249d3e4a26aed6d508fe7e83ae.png"
+    },
+    {
+      "name": "Mutton Dak Bunglow",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Classic Bengali-style mutton curry with rich, rustic dak bungalow flavors.",
+      "full_description": "Tender mutton is slow-cooked in a fragrant, home-style gravy with onions, spices, and a comforting depth of flavor. Inspired by the old dak bungalow tradition, this dish brings together robust aroma, silky gravy, and succulent meat in every bite.",
+      "allergens": [],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/6de6668c0dc842a19c09958f5917e157.png"
+    },
+    {
+      "name": "Mutton Kosa",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Slow-cooked mutton in a rich, aromatic Bengali kosha gravy",
+      "full_description": "Tender pieces of mutton are slow-cooked in a thick, caramelized onion gravy with ginger, garlic, warm spices, and mustard oil. Deep, bold, and satisfying, this classic Bengali-style kosa delivers layered flavour with a luscious, clingy finish that pairs beautifully with rice or luchi.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/826a01896855403ca7ce82f4705a2e61.png"
+    },
+    {
+      "name": "Mutton Resala",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Slow-cooked mutton in a silky, aromatic Mughlai gravy",
+      "full_description": "Tender pieces of mutton are simmered in a smooth, delicately spiced resala gravy made with yogurt, onions, and fragrant whole spices. Rich, velvety, and deeply comforting, this classic dish brings a regal North Indian touch to every bite.",
+      "allergens": [
+        "dairy",
+        "nuts"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/72887f37212743cc93919272cecbdb16.png"
+    },
+    {
+      "name": "Mutton er Patla Alu diye Jhol",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Light, comforting mutton curry with potatoes in a fragrant broth",
+      "full_description": "Mutton er Patla Alu diye Jhol is a classic Bengali home-style curry featuring tender pieces of mutton simmered slowly with soft potatoes in a thin, aromatic gravy. Lightly spiced with onion, ginger, garlic, and whole warm spices, it’s soulful, comforting, and perfect with steamed rice.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/f78a9db91b814fec8abe5b2bd8973955.png"
+    },
+    {
+      "name": "Oll Chingri",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Tender taro simmered with juicy prawns in a homestyle Bengali curry",
+      "full_description": "Oll Chingri is a beloved Bengali delicacy where soft, earthy taro (ol) is cooked with succulent prawns in a lightly spiced, mustard-kissed gravy. The dish brings together the delicate sweetness of seafood and the comforting creaminess of the vegetable for a rustic, soulful bite.",
+      "allergens": [
+        "seafood"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/a67096a4918b4967b42e43ccba47bd39.png"
+    },
+    {
+      "name": "Potol Aloo diye Rui Mach",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Rui mach simmered with potol and aloo in fragrant Bengali gravy",
+      "full_description": "Tender Rui fish is gently simmered with potol and aloo in a classic Bengali mustard-kissed gravy. Lightly spiced and soulfully aromatic, this homestyle curry brings together the soft sweetness of vegetables and the delicate richness of fish in every comforting bite.",
+      "allergens": [
+        "seafood"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/fa92d8cac28c4824a8b20d7c3bb74b79.png"
+    },
+    {
+      "name": "Pui Chingri Ghonto",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Fragrant malabar spinach and shrimp cooked into a soulful Bengali ghonto.",
+      "full_description": "Pui Chingri Ghonto brings together tender pui shak (malabar spinach) and succulent shrimp in a lightly spiced, slow-cooked Bengali stir-fry. The dish is earthy, aromatic, and deeply comforting, with the greens melting into the masala and the chingri adding a sweet, briny richness in every bite.",
+      "allergens": [
+        "seafood"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/efd20de161514a10b951358440432e73.png"
+    },
+    {
+      "name": "Rui Aloo Jhol",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Light, tangy Rui Aloo Jhol with comforting Bengali home-style warmth",
+      "full_description": "Tender rui fish and soft potatoes simmer in a thin, fragrant Bengali gravy with turmeric, ginger, and subtle spices. This soulful jhol is light yet deeply flavorful, best enjoyed with steamed rice for a classic homestyle meal.",
+      "allergens": [
+        "seafood"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/82e7e4ecea8d44d6a9932133fce77e35.png"
+    },
+    {
+      "name": "Rui Mach Gobi diye Jhol",
+      "category": "main-non-veg",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Delicate rohu fish and cauliflower simmered in a light, homestyle mustard gravy.",
+      "full_description": "Rui Mach Gobi diye Jhol is a comforting Bengali fish curry featuring tender rohu pieces and cauliflower simmered in a lightly spiced, golden jhol. Fragrant with mustard, turmeric, and fresh Bengali-style seasonings, it delivers a clean, soulful flavor with a delicate texture that pairs beautifully with steamed rice.",
+      "allergens": [
+        "seafood"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/c84aac2db4014da2b6db1cc953629d1f.png"
+    },
+    {
+      "name": "Aloo Korolar Jhal",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Spicy Bengali banana flower and potato stir-fry with rustic charm",
+      "full_description": "Aloo Korolar Jhal is a beloved Bengali-style stir-fry that brings together tender potato cubes and delicately prepared banana flower in a fragrant, spiced tempering. Lightly sautéed with mustard, green chilies, and earthy aromatics, it delivers a comforting bite with a pleasantly textured finish.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/b1e0a6027e754828887a3b3d93902a00.png"
+    },
+    {
+      "name": "Beet Gajorer Tarkari",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "mild",
+      "price_cad": 15.99,
+      "short_description": "Earthy beet and carrot curry, bright, comforting, and subtly spiced",
+      "full_description": "Beet Gajorer Tarkari is a vibrant Bengali-style vegetable curry made with tender beetroot and sweet carrots simmered in a light, fragrant masala. It has a naturally earthy sweetness, a soft melt-in-the-mouth texture, and a homestyle finish that feels both nourishing and deeply satisfying.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/129b3103d9094087b8394683cb0b0236.png"
+    },
+    {
+      "name": "Bori diye Laue Ghonto",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "mild",
+      "price_cad": 15.99,
+      "short_description": "Comforting lau ghonto with crispy bori and rustic Bengali warmth",
+      "full_description": "Bori diye Laue Ghonto is a classic Bengali home-style delicacy made with tender bottle gourd simmered slowly with crunchy lentil dumplings, fragrant spices, and a touch of sweetness. Light yet deeply satisfying, it brings together soft, melt-in-the-mouth vegetables and the earthy bite of bori in every spoonful.",
+      "allergens": [],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/d953529e6175419e844cf291e1602f70.png"
+    },
+    {
+      "name": "Dhokar Dalna",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Soft lentil cakes simmered in a fragrant Bengali potato curry",
+      "full_description": "Dhokar Dalna is a beloved Bengali classic made with savory chana dal cakes, lightly fried until golden and then simmered in a spiced potato gravy. Aromatic with ginger, cumin, and a touch of warmth, it offers a comforting mix of soft, crisp, and melt-in-the-mouth textures.",
+      "allergens": [
+        "gluten"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/2f50de022afa4c9ab9c2517861757c1b.png"
+    },
+    {
+      "name": "Echor Aloo Dalna",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Tender jackfruit and potatoes simmered in a fragrant Bengali spice gravy.",
+      "full_description": "Echor Aloo Dalna is a beloved Bengali comfort curry made with young jackfruit and potatoes slow-cooked in a lightly spiced, aromatic gravy. Soft, hearty, and deeply satisfying, it brings the earthy sweetness of echor together with classic mustard-kissed Bengali flavors.",
+      "allergens": [],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/7d1179fc64ca49d29f14fbb3742e8aa2.png"
+    },
+    {
+      "name": "Fulkopi Aloo Kosha",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Slow-cooked cauliflower and potato curry, rich, aromatic, and deeply comforting.",
+      "full_description": "Fulkopi Aloo Kosha brings together tender cauliflower and soft potato chunks in a thick, slow-cooked Bengali masala. Built on caramelized onions, ginger, and warm spices, this homestyle curry delivers a deep, comforting flavor with a lightly earthy finish.",
+      "allergens": [],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/170e4eb953f048929fe801787eef21c4.png"
+    },
+    {
+      "name": "Jhingey Aloo Posto",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Baby shrimp and potatoes in a creamy, poppy-seed mustard-kissed curry",
+      "full_description": "Jhingey Aloo Posto is a beloved Bengali delicacy where tender baby shrimp and soft potatoes are simmered in a silky posto paste made from poppy seeds, green chilies, and mustard oil. The result is earthy, gently nutty, and deeply comforting, with a classic homestyle flavor that pairs beautifully with steaming rice.",
+      "allergens": [
+        "seafood"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/e712a1bc406b475a91a88d4f3313f835.png"
+    },
+    {
+      "name": "Kanchkola Kofta",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Tender raw banana koftas in a rich, fragrant Bengali curry",
+      "full_description": "Kanchkola Kofta features delicately spiced raw banana dumplings, lightly crisped and simmered in a velvety, aromatic gravy. This classic Bengali preparation balances earthy sweetness, warming spices, and a silky finish that pairs beautifully with rice or luchi.",
+      "allergens": [
+        "dairy",
+        "nuts"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/85d6e054ac134906b7788d59da1b94c2.png"
+    },
+    {
+      "name": "Lau er Daal",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "mild",
+      "price_cad": 15.99,
+      "short_description": "Comforting bottle gourd and lentil curry, simple, homestyle, and deeply satisfying.",
+      "full_description": "Lau er Daal is a beloved Bengali home-style dish where tender bottle gourd is gently simmered with creamy lentils and warm spices. Light yet nourishing, it delivers a soft, comforting texture and the soulful taste of everyday Bengal in every spoonful.",
+      "allergens": [],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/57f084f9f49c410b80763c6a1664c166.png"
+    },
+    {
+      "name": "Masala Vendi",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Tender okra tossed in fragrant spices, crisp and irresistibly savory.",
+      "full_description": "Fresh okra is sautéed with a bold masala blend until each piece is lightly crisp on the edges and coated in rich, aromatic spices. This comforting dish brings a homestyle Indian warmth with the earthy flavor of vendi balanced by tangy, savory seasoning.",
+      "allergens": [],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/2fc1cc804f284941a395ebdcd89babfe.png"
+    },
+    {
+      "name": "Motor Paneer",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Soft paneer and green peas in a rich, aromatic curry",
+      "full_description": "Tender cubes of paneer and sweet green peas simmer in a luscious, tomato-onion gravy infused with warm Bengali spices. This comforting Motor Paneer brings together a creamy texture, gentle sweetness, and a savory depth that pairs beautifully with luchi, roti, or steamed rice.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/1578f9c1a9ec49af9ef01093a11baf48.png"
+    },
+    {
+      "name": "Mushroom Shorshey (Besara)",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Earthy mushrooms simmered in pungent mustard gravy, classic Bengali comfort.",
+      "full_description": "Tender mushrooms are gently cooked in a vibrant shorshey besara gravy made with ground mustard, green chilies, and aromatic spices. This Bengali-style preparation brings a sharp, nutty heat and a silky texture that clings beautifully to every bite, making it a comforting yet bold vegetarian favorite.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/7d52bd52bb31406da3f54a3096b83484.png"
+    },
+    {
+      "name": "Navratan Korma",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "mild",
+      "price_cad": 15.99,
+      "short_description": "Creamy royal korma with colorful vegetables and nutty sweetness",
+      "full_description": "A classic Navratan Korma made with a vibrant mix of vegetables, fruits, and paneer simmered in a rich, mildly spiced gravy. Finished with cream, cashews, and warming aromatic spices, it delivers a velvety, luxurious taste with a subtle sweetness in every bite.",
+      "allergens": [
+        "dairy",
+        "nuts"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/6153ee3ed1854e5798fefeb042342821.png"
+    },
+    {
+      "name": "Niramis Badhakopi",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Tender cabbage stir-fried with fragrant Bengali spices",
+      "full_description": "Niramis Badhakopi is a comforting Bengali-style dry cabbage dish, gently sautéed with mustard oil, whole spices, and a delicate blend of ginger and green chilli. Light, aromatic, and homey, it brings out the natural sweetness of the cabbage with a satisfying, tender bite.",
+      "allergens": [],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/921e2368fee948f180dc1be73a98e084.png"
+    },
+    {
+      "name": "Palong Ghonto",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Earthy spinach medley cooked Bengali-style with homestyle warmth",
+      "full_description": "Palong Ghonto is a comforting Bengali classic made with tender spinach, seasonal vegetables, and aromatic spices slow-cooked into a lightly mashed, savory medley. Earthy, wholesome, and beautifully rustic, it brings a soothing homestyle flavor that pairs perfectly with steaming rice.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/7aaaf594afb446c4a290d088dd408fcc.png"
+    },
+    {
+      "name": "Palong Paneer",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Silky paneer simmered in vibrant spinach, rich and comforting.",
+      "full_description": "Fresh spinach is slow-cooked into a smooth, fragrant gravy and folded with soft paneer cubes for a classic Bengali-style comfort dish. Lightly spiced and finished with a creamy touch, it delivers earthy depth, tender texture, and a homestyle richness that pairs beautifully with rice or roti.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/c6961aadd50e4d56a514760855a25c00.png"
+    },
+    {
+      "name": "Panchmishali Tarkari",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "A vibrant medley of five vegetables simmered in fragrant Bengali spices.",
+      "full_description": "Panchmishali Tarkari is a classic Bengali mixed-vegetable curry, bringing together a colorful assortment of seasonal vegetables in a lightly spiced, aromatic gravy. Finished with mustard-kissed warmth and a comforting homestyle texture, it’s hearty, wholesome, and deeply satisfying.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/555ceb4064274d158afc364b34a84466.png"
+    },
+    {
+      "name": "Paneer Aloo Dalna",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Tender paneer and potatoes simmered in a classic Bengali-spiced gravy",
+      "full_description": "Paneer Aloo Dalna is a beloved Bengali-style curry featuring soft paneer cubes and golden potatoes gently simmered in a lightly spiced, aromatic gravy. The sauce is warm, comforting, and subtly rich with mustard oil, ginger, and traditional whole spices, making every bite hearty and homestyle.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/d1ad4bab810e4012afa04e330d99b41f.png"
+    },
+    {
+      "name": "Posto diye Bhindi Aloo Bhaja",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "mild",
+      "price_cad": 15.99,
+      "short_description": "Crisp okra and potatoes tossed in poppy-seed goodness.",
+      "full_description": "A comforting Bengali-style dry dish of bhindi and aloo, lightly fried and finished with aromatic posto. The poppy-seed coating brings a nutty, mellow richness that clings to every golden bite, making it a homely and satisfying side or light main.",
+      "allergens": [
+        "nuts"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/7b05dd2967b546cabc731194278b8291.png"
+    },
+    {
+      "name": "Potol Aloo Posto",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "mild",
+      "price_cad": 15.99,
+      "short_description": "Tender potol and aloo simmered in creamy, nutty poppy-seed bliss",
+      "full_description": "A beloved Bengali vegetarian classic, Potol Aloo Posto brings together tender pointed gourd and soft potatoes in a silky poppy seed paste. Finished with mustard oil and gentle spices, it delivers a delicate nutty aroma, comforting texture, and a subtly earthy finish that pairs beautifully with steamed rice.",
+      "allergens": [
+        "nuts"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/a0017b5acbd74eb9ba44c0de691976ec.png"
+    },
+    {
+      "name": "Sabji diye Laal Saag Ghonto",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Earthy laal saag slow-cooked with seasonal sabji and rustic Bengali spices",
+      "full_description": "Sabji diye Laal Saag Ghonto is a homestyle Bengali medley of tender laal saag simmered with seasonal vegetables, creating a thick, nourishing mash with deep earthy flavor. Finished with mustard-kissed spices and a gentle tempering, it delivers a comforting balance of softness, warmth, and old-world village-style charm.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/b43f981780d246f18a5226aa8d787898.png"
+    },
+    {
+      "name": "Shorshey Bhindi",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Tender okra simmered in bold, aromatic mustard gravy.",
+      "full_description": "Shorshey Bhindi is a classic Bengali-style okra preparation where tender bhindi is gently cooked in a pungent mustard sauce. The gravy is bright, earthy, and lightly tangy, coating each piece with a rich, home-style flavor that pairs beautifully with steaming rice or luchi.",
+      "allergens": [
+        "nuts"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/6ffc499df7294f019b15615e9c0481c2.png"
+    },
+    {
+      "name": "Soyabean Aloo Dalna",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Hearty soyabean and potato curry in fragrant Bengali spices",
+      "full_description": "Soyabean Aloo Dalna is a comforting Bengali-style curry made with tender soyabean chunks and soft potatoes simmered in a lightly spiced, homestyle gravy. Subtle sweetness, warm mustard oil notes, and a silky finish make it perfect with steaming rice or luchi.",
+      "allergens": [
+        "gluten"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/ef050b034b1048ad8ed255a6df89a761.png"
+    },
+    {
+      "name": "Soyabean Pasanda",
+      "category": "main-veg",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Rich soyabean pasanda in a silky, spiced gravy",
+      "full_description": "Tender soyabean pieces are simmered in a luxurious pasanda-style gravy with onions, yogurt, warm spices, and a touch of creaminess. Finished with a rich, aromatic sauce, it delivers a satisfying bite and a beautifully balanced depth of flavour.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/97c376fd7a454530afecda74857f31cf.png"
+    },
+    {
+      "name": "Biryani",
+      "category": "rice",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Fragrant, slow-cooked rice layered with aromatic spices and rich flavor",
+      "full_description": "Our Biryani is a royal, slow-cooked rice dish infused with whole spices, saffron-kissed aroma, and tender, deeply seasoned layers. Served with a balanced blend of herbs and rich masala, every spoonful delivers fluffy grains, warm fragrance, and a satisfying, celebratory bite.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/c45939eeecd542349579a38799a8281b.png"
+    },
+    {
+      "name": "Chicken Biryani",
+      "category": "rice",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Aromatic chicken biryani layered with fragrant basmati and bold spices",
+      "full_description": "Slow-cooked chicken is layered with long-grain basmati rice, caramelized onions, whole spices, and a saffron-kissed aroma for a deeply satisfying biryani. Every spoonful brings tender meat, fluffy rice, and a rich, festive warmth that feels straight from an authentic South Asian kitchen.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": true,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/13e863a17ed1467381fc9c13d3d4ce6a.png"
+    },
+    {
+      "name": "Mutton Biryani",
+      "category": "rice",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Fragrant mutton biryani layered with tender meat and aromatic rice",
+      "full_description": "Slow-cooked mutton is layered with long-grain basmati rice, warm whole spices, caramelized onions, and fresh herbs for a rich, deeply aromatic biryani. Each spoonful brings tender, juicy meat and fluffy grains infused with the signature Mustard Garden flavor.",
+      "allergens": [
+        "dairy"
+      ],
+      "always_available": true,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/3f7fcc867cfb48bca392b385bc0720fa.png"
+    },
+    {
+      "name": "Rice",
+      "category": "rice",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "mild",
+      "price_cad": 15.99,
+      "short_description": "Fluffy, fragrant rice — the perfect canvas for every curry and chutney.",
+      "full_description": "Steamed to soft, fluffy perfection, this classic rice is light, aromatic, and made to pair beautifully with rich Bengali and Indian dishes. Simple, comforting, and versatile, it balances bold curries, spicy gravies, and tangy sides with every spoonful.",
+      "allergens": [],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/ae07524ac8be47bcb3ed305d2c740417.png"
+    },
+    {
+      "name": "Chutney of the Week",
+      "category": "side",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "mild",
+      "price_cad": 15.99,
+      "short_description": "A rotating house chutney with bold, fresh Bengali flavors.",
+      "full_description": "Our Chutney of the Week is a seasonal, house-made chutney crafted to surprise and delight with each batch. Expect a bright balance of sweet, tangy, and lightly spiced notes that pair beautifully with rice plates, snacks, and comfort favorites.",
+      "allergens": [],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/eb93e6d848ef49e48ac56526a30f6d18.png"
+    },
+    {
+      "name": "Dal of the Week",
+      "category": "side",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Comforting, soulful dal simmered to warm you from the first spoonful.",
+      "full_description": "A homestyle lentil preparation inspired by the changing rhythms of a Bengali kitchen, this Dal of the Week is slow-cooked until silky and deeply comforting. Finished with aromatic tempering and balanced seasoning, it pairs beautifully with rice, roti, or paratha for a simple meal that feels complete.",
+      "allergens": [],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/293823020a124319b2ec40639b8defbc.png"
+    },
+    {
+      "name": "Jhuri Aloo Bhaja",
+      "category": "side",
+      "cuisine": "bengali",
+      "veg_type": "vegetarian",
+      "spice_level": "mild",
+      "price_cad": 15.99,
+      "short_description": "Crispy, golden potato shreds with a savory Bengali crunch",
+      "full_description": "Jhuri Aloo Bhaja is a beloved Bengali-style potato fry made by finely shredding potatoes and frying them until irresistibly crisp and golden. Lightly seasoned for a clean, savory finish, it brings a delicate crunch that pairs beautifully with steaming rice, dal, and homestyle meals.",
+      "allergens": [
+        "gluten"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/9769de0f47404695a40e83728e2d22b0.png"
+    },
+    {
+      "name": "Chicken Roll",
+      "category": "starter",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Spiced chicken wrapped in a soft, satisfying roll",
+      "full_description": "Tender, juicy chicken is seasoned with bold Bengali-style spices and tucked into a warm, flaky wrap for the perfect handheld bite. Finished with fresh onions and tangy chutney, this roll brings together crispy, savory, and zesty flavors in every mouthful.",
+      "allergens": [
+        "gluten",
+        "dairy"
+      ],
+      "always_available": true,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/7fa38a16f8574d17a5b70c5943ed2bb7.png"
+    },
+    {
+      "name": "Egg Roll",
+      "category": "starter",
+      "cuisine": "bengali",
+      "veg_type": "eggitarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Flaky paratha wrapped around spicy, street-style egg filling",
+      "full_description": "A beloved Kolkata street-food classic, this egg roll features a golden, flaky paratha layered with softly cooked eggs and vibrant spices. Finished with crisp onions, tangy chutney, and a squeeze of lime, it delivers a perfect mix of warmth, crunch, and bold flavor in every bite.",
+      "allergens": [
+        "gluten",
+        "dairy"
+      ],
+      "always_available": true,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/9481e44ed21d4dbd94efeb372304f427.png"
+    },
+    {
+      "name": "Kolkata Rolls",
+      "category": "starter",
+      "cuisine": "bengali",
+      "veg_type": "eggitarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Street-style Kolkata rolls, wrapped hot and bursting with flavor",
+      "full_description": "Crispy, flaky paratha rolled around a savory filling, Kolkata Rolls bring the iconic street-food charm of Kolkata straight to your table. Freshly assembled with tangy sauces, onions, and spiced stuffing, every bite delivers a perfect mix of crunch, warmth, and bold flavor.",
+      "allergens": [
+        "gluten",
+        "dairy"
+      ],
+      "always_available": false,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/ce044ac46cfc4c5693a641dd6f2b1be9.png"
+    },
+    {
+      "name": "Mutton Roll",
+      "category": "starter",
+      "cuisine": "bengali",
+      "veg_type": "non-vegetarian",
+      "spice_level": "medium",
+      "price_cad": 15.99,
+      "short_description": "Juicy spiced mutton wrapped in a crisp, flaky roll",
+      "full_description": "Succulent mutton is slow-cooked with fragrant spices, then tucked into a golden, flaky roll for a satisfying bite. Crisp on the outside and richly savory inside, this handheld favorite delivers bold Bengali street-style flavor with every mouthful.",
+      "allergens": [
+        "gluten",
+        "dairy"
+      ],
+      "always_available": true,
+      "is_active": true,
+      "image_url": "https://garden-template-1.preview.emergentagent.com/api/uploads/menu/580dfebe66e24c918938ca771296df34.png"
+    }
+  ],
+  "weekly_menus": [
+    {
+      "week_start": "2026-08-30",
+      "title": "Weekly Meal Plan — 24th Aug",
+      "alacarte_enabled": false,
+      "alacarte_visible_items": [
+        "Masala Vendi",
+        "Dhokar Dalna",
+        "Palong Ghonto",
+        "Motor Paneer",
+        "Aloo Korolar Jhal",
+        "Anda Tadka",
+        "Lau Chingri",
+        "Chicken Aloo Jhol",
+        "Doi Rui",
+        "Mutton Kosa"
+      ],
+      "package_enabled": true,
+      "package": {
+        "name": "Weekly Meal Plan",
+        "description": "Pick any 5 dishes. Price adjusts to your veg / non-veg mix.",
+        "pick_count": 5,
+        "pricing_mode": "composition",
+        "flat_price_cad": 0.0,
+        "veg_price_cad": 64.99,
+        "mixed_price_cad": 69.99,
+        "nonveg_price_cad": 79.99,
+        "eligible_items": [
+          "Masala Vendi",
+          "Dhokar Dalna",
+          "Palong Ghonto",
+          "Motor Paneer",
+          "Aloo Korolar Jhal",
+          "Anda Tadka",
+          "Lau Chingri",
+          "Chicken Aloo Jhol",
+          "Doi Rui",
+          "Mutton Kosa"
+        ],
+        "item_surcharges_cad": {}
+      },
+      "complimentary_items": [
+        "Gur er Payesh",
+        "Dal of the Week"
+      ]
+    }
+  ]
+}
