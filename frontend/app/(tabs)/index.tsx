@@ -447,7 +447,16 @@ const styles = StyleSheet.create({
   featBody: { padding: spacing.lg, gap: 8 },
   featName: { color: "#fff", fontSize: 18, fontWeight: "700", lineHeight: 22 },
   featRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  featPrice: { color: colors.primary, fontSize: 16, fontWeight: "800" },
+  featPrice: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: "800",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    overflow: "hidden",
+  },
   featAdd: { width: 32, height: 32, borderRadius: radius.pill, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
 
   grid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: spacing.lg, gap: spacing.md, marginTop: 4 },
