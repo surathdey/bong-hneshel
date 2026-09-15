@@ -12,7 +12,7 @@ import { mediaUrl } from "@/src/utils/backendUrl";
 import { colors, spacing, radius, shadows } from "@/src/theme";
 import { centsToCAD } from "@/src/utils/format";
 
-type MenuItem = { item_id: string; name: string; description: string; price_cents: number; image_url: string; category: string; tags: string[]; is_featured: boolean; };
+type MenuItem = { item_id: string; name: string; description: string; price_cents: number; image_url: string; category: string; tags: string[]; is_featured: boolean; veg_type?: string; };
 type WeeklyPackage = {
   package_id?: string; name: string; description?: string; price_cents: number;
   pick_count: number; eligible_master_ids: string[]; image_url?: string;
@@ -37,14 +37,16 @@ function formatWeekRange(weekStartIso?: string): string {
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
-const CATEGORIES = [
-  { key: "all", label: "All" },
-  { key: "rice", label: "Rice & Biryani" },
-  { key: "curry", label: "Curries" },
-  { key: "veg", label: "Vegetarian" },
-  { key: "starter", label: "Starters" },
-  { key: "dessert", label: "Sweets" },
-];
+/** Classic Indian veg / non-veg / egg indicator: a bordered square with a dot. */
+function VegMarker({ type }: { type?: string }) {
+  const t = (type || "vegetarian").toLowerCase();
+  const color = t === "non-vegetarian" ? "#C1272D" : t === "eggitarian" ? "#E6A700" : "#0A8F3C";
+  return (
+    <View style={[styles.vegMarker, { borderColor: color }]} testID={`veg-marker-${t}`}>
+      <View style={[styles.vegDot, { backgroundColor: color }]} />
+    </View>
+  );
+}
 
 type Mode = "alacarte" | "package";
 
@@ -53,7 +55,6 @@ export default function MenuTab() {
   const [anytime, setAnytime] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [cat, setCat] = useState("all");
   const [mode, setMode] = useState<Mode>("alacarte");
   const { add, count } = useCart();
   const router = useRouter();
@@ -85,11 +86,7 @@ export default function MenuTab() {
     else if (alacarteOn && !packageOn) setMode("alacarte");
   }, [packageOn, alacarteOn]);
 
-  const items = useMemo(() => {
-    if (!current?.items) return [];
-    if (cat === "all") return current.items;
-    return current.items.filter(i => i.category === cat);
-  }, [current, cat]);
+  const items = useMemo(() => current?.items ?? [], [current]);
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
@@ -132,27 +129,6 @@ export default function MenuTab() {
             </TouchableOpacity>
           </View>
         )}
-
-        {activeMode === "alacarte" && (
-          <ScrollView
-            horizontal showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: spacing.xl, gap: spacing.sm, paddingVertical: spacing.md }}
-          >
-            {CATEGORIES.map(c => {
-              const active = cat === c.key;
-              return (
-                <TouchableOpacity
-                  key={c.key}
-                  testID={`menu-category-${c.key}`}
-                  onPress={() => setCat(c.key)}
-                  style={[styles.chip, active && styles.chipActive]}
-                >
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{c.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        )}
       </SafeAreaView>
 
       {activeMode === "package" ? (
@@ -192,6 +168,7 @@ export default function MenuTab() {
               <Image source={{ uri: mediaUrl(item.image_url) }} style={styles.rowImg} />
               <View style={{ flex: 1, padding: spacing.md, gap: 4 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <VegMarker type={item.veg_type} />
                   <Text style={styles.rowName} numberOfLines={1}>{item.name}</Text>
                   {item.is_featured && <View style={styles.tagFeat}><Text style={styles.tagFeatText}>SIGNATURE</Text></View>}
                 </View>
@@ -210,7 +187,7 @@ export default function MenuTab() {
               </View>
             </View>
           )}
-          ListEmptyComponent={<Text style={{ textAlign: "center", color: colors.textMuted, marginTop: 40 }}>No items in this category.</Text>}
+          ListEmptyComponent={<Text style={{ textAlign: "center", color: colors.textMuted, marginTop: 40 }}>No items available this week.</Text>}
         />
       )}
     </View>
@@ -295,7 +272,10 @@ function AnytimeSection({ items, onAdd }: { items: MenuItem[]; onAdd: (it: MenuI
         <View key={it.item_id} style={styles.row} testID={`anytime-row-${it.item_id}`}>
           <Image source={{ uri: mediaUrl(it.image_url) }} style={styles.rowImg} />
           <View style={{ flex: 1, padding: spacing.md, gap: 4 }}>
-            <Text style={styles.rowName} numberOfLines={1}>{it.name}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <VegMarker type={it.veg_type} />
+              <Text style={styles.rowName} numberOfLines={1}>{it.name}</Text>
+            </View>
             <Text style={styles.rowDesc} numberOfLines={2}>{it.description}</Text>
             <View style={styles.rowFoot}>
               <Text style={styles.rowPrice}>{centsToCAD(it.price_cents)}</Text>
@@ -319,7 +299,7 @@ const styles = StyleSheet.create({
   compPreview: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: spacing.md, padding: spacing.md, backgroundColor: "#FFFBF2", borderRadius: radius.md, borderWidth: 1, borderColor: colors.secondary },
   compPreviewText: { flex: 1, fontSize: 12, color: colors.text, fontWeight: "600" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
-  header: { backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.border },
+  header: { backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: spacing.lg },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.xl, paddingBottom: 0 },
   eyebrow: { color: colors.primary, letterSpacing: 3, fontSize: 11, fontWeight: "800" },
   title: { fontSize: 26, fontWeight: "800", color: colors.text, marginTop: 4, letterSpacing: -0.3 },
@@ -338,6 +318,8 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { color: colors.text, fontWeight: "600", fontSize: 13 },
   chipTextActive: { color: "#fff" },
+  vegMarker: { width: 15, height: 15, borderWidth: 1.5, borderRadius: 3, alignItems: "center", justifyContent: "center" },
+  vegDot: { width: 7, height: 7, borderRadius: 4 },
 
   row: { flexDirection: "row", backgroundColor: colors.surface, borderRadius: radius.lg, overflow: "hidden", borderWidth: 1, borderColor: colors.border, ...shadows.soft },
   rowImg: { width: 110, height: 110, backgroundColor: colors.surfaceAlt },
