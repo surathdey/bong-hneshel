@@ -3,9 +3,9 @@ Curry & Co. — Backend API
 FastAPI + MongoDB + Emergent Google Auth + Stripe Checkout + Emergent Push
 """
 from fastapi import FastAPI, APIRouter, HTTPException, Header, Request, Depends, UploadFile, File
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from dotenv import load_dotenv
+from dotenv import load_dotenv, dotenv_values
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
@@ -13,6 +13,7 @@ import asyncio
 import logging
 import uuid
 import httpx
+import stripe
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Any, Dict
@@ -20,6 +21,16 @@ from datetime import datetime, timezone, timedelta, date
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
+# The preview container can export a stray global STRIPE_API_KEY that shadows
+# backend/.env (load_dotenv does NOT override already-set env vars). For the
+# Stripe secret we therefore trust backend/.env as the source of truth.
+_ENV_FILE = dotenv_values(ROOT_DIR / ".env")
+
+
+def _stripe_secret() -> str:
+    """Stripe secret key — prefer backend/.env (authoritative for this tenant)
+    then fall back to the process environment."""
+    return (_ENV_FILE.get("STRIPE_API_KEY") or os.environ.get("STRIPE_API_KEY", "")).strip()
 
 # --- Brand config (name/emails/region — one file to swap on rebrand)
 from brand import (
@@ -37,7 +48,7 @@ db_name = os.environ["DB_NAME"]
 # In preview/dev, `backend/.env` is expected to set STRIPE_API_KEY (Stripe test
 # key is fine). In production, Emergent injects the live/test key via the deploy
 # panel. If completely unset, the checkout endpoint will refuse to charge.
-STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
+STRIPE_API_KEY = _stripe_secret()
 EMERGENT_PUSH_KEY = os.environ.get("EMERGENT_PUSH_KEY", "placeholder")
 # Brand-driven defaults with env overrides (Emergent Deploy Secrets can still
 # override for production without touching brand.json).
@@ -176,24 +187,22 @@ async def send_email(to: str, subject: str, body: str):
     log.info(f"[EMAIL MOCK] to={to} subject={subject!r} body={body[:120]}...")
 
 
-# --- Stripe (via emergentintegrations) — TEMPORARILY DISABLED
-# Card payments are OFF while we ship the MVP with COD + Interac only.
-# To re-enable later: uncomment this import + `_stripe()` helper + the three
-# `/api/checkout/*` endpoints below, then flip the "stripe" method to enabled
-# in business_settings.payment_methods.
-# from emergentintegrations.payments.stripe.checkout import (
-#     StripeCheckout,
-#     CheckoutSessionRequest,
-# )
-
-
-def _stripe(webhook_url: str):  # noqa: ARG001 — kept as a defensive stub
-    """Stripe is temporarily disabled. Any legacy call sites hit 503 instead of
-    a hard import error."""
-    raise HTTPException(
-        503,
-        "Card payments are disabled on this deployment. Please use Cash on Delivery or Interac e-Transfer.",
-    )
+# --- Stripe (hosted Checkout Session) -----------------------------------
+# Card payments (incl. Apple Pay / Google Pay / cards) run through Stripe's
+# hosted Checkout page. The secret key lives ONLY here in the backend.
+# Enable eligible methods (Cards, Apple Pay, Google Pay) in the Stripe
+# Dashboard → Settings → Payment methods; Checkout shows them automatically.
+def _stripe():
+    """Return the configured Stripe SDK, or 503 if STRIPE_API_KEY is unset."""
+    key = _stripe_secret()
+    if not key:
+        raise HTTPException(
+            503,
+            "Card payments are not configured on this deployment yet. "
+            "Please use Cash on Delivery or Interac e-Transfer.",
+        )
+    stripe.api_key = key
+    return stripe
 
 
 # ==========================================================
@@ -364,11 +373,10 @@ class BusinessSettings(BaseModel):
     tax_label: str = "HST"
     currency: str = BRAND_REGION.get("currency", "CAD")
     company_info: str = ""
-    # Per-payment-method configuration
-    # NOTE: Stripe (card) is DISABLED for MVP — flip enabled=True when we
-    # re-enable the /api/checkout/* endpoints and set STRIPE_API_KEY.
+    # Per-payment-method configuration.
+    # Card (Stripe) shows Apple Pay / Google Pay / cards on the hosted page.
     payment_methods: Dict[str, PaymentMethodConfig] = Field(default_factory=lambda: {
-        "stripe":  PaymentMethodConfig(enabled=False, tax_enabled=True),
+        "stripe":  PaymentMethodConfig(enabled=True,  tax_enabled=True),
         "paypal":  PaymentMethodConfig(enabled=False, tax_enabled=True),
         "cod":     PaymentMethodConfig(enabled=True,  tax_enabled=True),
         "interac": PaymentMethodConfig(enabled=True,  tax_enabled=True,
@@ -1666,69 +1674,195 @@ class CheckoutReq(BaseModel):
 
 @api.post("/checkout/session")
 async def create_checkout_session(req: CheckoutReq, request: Request, user: User = Depends(_current_user)):
-    """Stripe hosted checkout — TEMPORARILY DISABLED.
-    Kept as a stub so the frontend gets a clear 503 (instead of a crash) if any
-    legacy client still tries to hit the card path. Re-enable by uncommenting
-    the full implementation below when Stripe is turned back on."""
-    raise HTTPException(
-        503,
-        "Card payments are disabled. Please switch this order to Cash on Delivery or Interac e-Transfer.",
+    """Create a Stripe hosted Checkout Session for a pending-payment order.
+    The hosted page shows Cards + Apple Pay + Google Pay (per Dashboard config).
+    Success/cancel are routed through the backend so it works on web AND Expo Go."""
+    sdk = _stripe()
+    order = await db.orders.find_one({"order_id": req.order_id, "user_id": user.user_id}, {"_id": 0})
+    if not order:
+        raise HTTPException(404, "Order not found")
+    if order.get("payment_status") == "paid":
+        raise HTTPException(400, "Order already paid")
+    amount = int(order.get("total_cents", 0))
+    if amount <= 0:
+        raise HTTPException(400, "Invalid order total")
+
+    api_base = _public_base_from_request(request, order.get("public_base_url")).rstrip("/")
+    origin = (req.origin_url or api_base).rstrip("/")
+    ref = order["order_id"][-6:].upper()
+
+    session = sdk.checkout.Session.create(
+        mode="payment",
+        line_items=[{
+            "price_data": {
+                "currency": "cad",
+                "product_data": {"name": f"{BRAND_NAME} — Order #{ref}"},
+                "unit_amount": amount,
+            },
+            "quantity": 1,
+        }],
+        client_reference_id=order["order_id"],
+        metadata={"order_id": order["order_id"], "origin": origin},
+        success_url=f"{api_base}/api/checkout/success?session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{api_base}/api/checkout/cancel?session_id={{CHECKOUT_SESSION_ID}}",
+        customer_email=((order.get("address") or {}).get("email") or None),
     )
-    # ------------------------------------------------------------------
-    # Original implementation (kept for future re-enable — do not delete)
-    # ------------------------------------------------------------------
-    # order = await db.orders.find_one({"order_id": req.order_id, "user_id": user.user_id}, {"_id": 0})
-    # if not order:
-    #     raise HTTPException(404, "Order not found")
-    # if order.get("payment_method") == "cod":
-    #     raise HTTPException(400, "Order is Cash on Delivery — no Stripe checkout needed")
-    # if order["payment_status"] == "paid":
-    #     raise HTTPException(400, "Order already paid")
-    #
-    # amount = order["total_cents"] / 100.0
-    # host_url = str(request.base_url).rstrip("/")
-    # webhook_url = f"{host_url}/api/checkout/webhook"
-    # stripe_svc = _stripe(webhook_url=webhook_url)
-    # success_url = f"{req.origin_url}/order/{req.order_id}?paid=1&session_id={{CHECKOUT_SESSION_ID}}"
-    # cancel_url = f"{req.origin_url}/order/{req.order_id}?paid=0"
-    # checkout_req = CheckoutSessionRequest(
-    #     amount=amount, currency="cad",
-    #     success_url=success_url, cancel_url=cancel_url,
-    #     metadata={"order_id": req.order_id, "user_id": user.user_id},
-    # )
-    # session = await stripe_svc.create_checkout_session(checkout_req)
-    # await db.payment_transactions.update_one(
-    #     {"session_id": session.session_id},
-    #     {"$set": {
-    #         "session_id": session.session_id, "order_id": req.order_id,
-    #         "user_id": user.user_id, "amount_cents": order["total_cents"],
-    #         "currency": "cad", "status": "initiated", "payment_status": "pending",
-    #         "created_at": datetime.now(timezone.utc),
-    #     }}, upsert=True,
-    # )
-    # await db.orders.update_one(
-    #     {"order_id": req.order_id},
-    #     {"$set": {"stripe_session_id": session.session_id, "updated_at": datetime.now(timezone.utc)}},
-    # )
-    # return {"url": session.url, "session_id": session.session_id}
+
+    await db.payment_transactions.update_one(
+        {"session_id": session.id},
+        {"$set": {
+            "session_id": session.id, "order_id": order["order_id"],
+            "user_id": user.user_id, "amount_cents": amount,
+            "currency": "cad", "status": "initiated", "payment_status": "pending",
+            "created_at": datetime.now(timezone.utc),
+        }}, upsert=True,
+    )
+    await db.orders.update_one(
+        {"order_id": order["order_id"]},
+        {"$set": {"stripe_session_id": session.id, "stripe_return_origin": origin,
+                  "payment_method": "card", "payment_status": "pending",
+                  "updated_at": datetime.now(timezone.utc)}},
+    )
+    return {"url": session.url, "session_id": session.id}
+
+
+async def _finalize_paid_card_order(order: dict, session: dict | None = None):
+    """Mark a card order as paid + confirmed and run the same post-order side
+    effects as COD/Interac (stock, points, notifications). Idempotent."""
+    now = datetime.now(timezone.utc)
+    res = await db.orders.update_one(
+        {"order_id": order["order_id"], "payment_status": {"$ne": "paid"}},
+        {"$set": {
+            "payment_status": "paid",
+            "status": "confirmed",
+            "paid_at": now.isoformat(),
+            "stripe_payment_intent": (session or {}).get("payment_intent"),
+            "updated_at": now,
+        },
+         "$push": {"tracking_events": {
+             "status": "confirmed", "ts": now.isoformat(),
+             "note": "Payment received (card) — order confirmed",
+         }}},
+    )
+    if res.modified_count == 0:
+        return  # already finalized elsewhere
+    if session and session.get("id"):
+        await db.payment_transactions.update_one(
+            {"session_id": session["id"]},
+            {"$set": {"status": "complete", "payment_status": "paid", "paid_at": now}},
+        )
+    fresh = await db.orders.find_one({"order_id": order["order_id"]}, {"_id": 0}) or order
+    try:
+        await _decrement_stock_for_order(fresh)
+    except Exception as e:
+        log.warning(f"card stock fail: {e}")
+    subtotal = fresh.get("subtotal_cents", 0)
+    points_awarded = subtotal // 100
+    points_redeem_cents = fresh.get("points_redeemed_cents", 0)
+    try:
+        await db.users.update_one({"user_id": fresh["user_id"]},
+                                  {"$inc": {"loyalty_points": points_awarded - points_redeem_cents}})
+        await db.orders.update_one({"order_id": fresh["order_id"]}, {"$set": {"points_awarded": points_awarded}})
+    except Exception as e:
+        log.warning(f"card points fail: {e}")
+    try:
+        settings = await _get_settings()
+        u = await db.users.find_one({"user_id": fresh["user_id"]}, {"_id": 0}) or {}
+        await _notify_order_created(fresh, settings, u)
+    except Exception as e:
+        log.warning(f"card notify fail: {e}")
+    try:
+        await send_push(
+            recipients=[fresh["user_id"]],
+            data={"title": "Payment received 🎉",
+                  "message": f"Your {BRAND_NAME} order is confirmed and being prepared.",
+                  "action_url": f"/order/{fresh['order_id']}"},
+        )
+    except Exception as e:
+        log.warning(f"card push fail: {e}")
+
+
+@api.get("/checkout/success")
+async def checkout_success(session_id: str):
+    """Stripe redirects the browser here. We verify payment server-side (source
+    of truth), finalize the order, then bounce back into the app with paid=1."""
+    sdk = _stripe()
+    try:
+        session = sdk.checkout.Session.retrieve(session_id)
+    except Exception:
+        raise HTTPException(404, "Checkout session not found")
+    meta = session.get("metadata") or {}
+    order_id = meta.get("order_id") or session.get("client_reference_id") or ""
+    origin = (meta.get("origin") or "").rstrip("/")
+    order = await db.orders.find_one({"order_id": order_id}, {"_id": 0}) if order_id else None
+    if order and not origin:
+        origin = (order.get("stripe_return_origin") or _order_base(order)).rstrip("/")
+    if order and session.get("payment_status") == "paid":
+        await _finalize_paid_card_order(order, dict(session))
+    target = f"{origin}/order/{order_id}?paid=1" if (origin and order_id) else (origin or "/")
+    return RedirectResponse(target, status_code=302)
+
+
+@api.get("/checkout/cancel")
+async def checkout_cancel(session_id: str = ""):
+    """Stripe cancel redirect — bounce back into the app with paid=0."""
+    order = None
+    if session_id:
+        order = await db.orders.find_one({"stripe_session_id": session_id}, {"_id": 0})
+    origin = ((order or {}).get("stripe_return_origin") or _order_base(order or {})).rstrip("/")
+    oid = (order or {}).get("order_id", "")
+    target = f"{origin}/order/{oid}?paid=0" if (origin and oid) else (origin or "/")
+    return RedirectResponse(target, status_code=302)
 
 
 @api.get("/checkout/status/{session_id}")
-async def checkout_status(session_id: str, request: Request, user: User = Depends(_current_user)):
-    """Stripe checkout status — TEMPORARILY DISABLED."""
-    raise HTTPException(503, "Card payments are disabled on this deployment.")
+async def checkout_status(session_id: str, user: User = Depends(_current_user)):
+    """Polling fallback: server verifies the session directly with Stripe."""
+    sdk = _stripe()
+    try:
+        session = sdk.checkout.Session.retrieve(session_id)
+    except Exception:
+        raise HTTPException(404, "Checkout session not found")
+    order_id = (session.get("metadata") or {}).get("order_id") or session.get("client_reference_id")
+    paid = session.get("payment_status") == "paid"
+    if paid and order_id:
+        order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+        if order:
+            await _finalize_paid_card_order(order, dict(session))
+    return {"session_id": session_id, "payment_status": session.get("payment_status"),
+            "paid": paid, "order_id": order_id}
 
 
 @api.post("/checkout/webhook")
 async def checkout_webhook(request: Request):
-    """Stripe webhook — TEMPORARILY DISABLED.
-    Returns 200 to any lingering Stripe retry attempts so we don't accumulate
-    webhook error logs on the Stripe dashboard."""
-    return {"received": True, "note": "stripe disabled"}
-
-
-async def checkout_status_finalize(session_id: str):  # kept as no-op for legacy references
-    return
+    """Authoritative fulfillment. Verifies the signature when STRIPE_WEBHOOK_SECRET
+    is set; either way it re-retrieves the session from Stripe before finalizing."""
+    sdk = _stripe()
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+    secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
+    try:
+        if secret and sig:
+            event = sdk.Webhook.construct_event(payload, sig, secret)
+        else:
+            import json as _json
+            event = _json.loads(payload.decode() or "{}")
+    except Exception:
+        raise HTTPException(400, "Invalid webhook")
+    if (event.get("type") or "") == "checkout.session.completed":
+        obj = (event.get("data") or {}).get("object") or {}
+        sess_id = obj.get("id")
+        if sess_id:
+            try:
+                session = sdk.checkout.Session.retrieve(sess_id)  # re-verify from Stripe
+                order_id = (session.get("metadata") or {}).get("order_id") or session.get("client_reference_id")
+                if session.get("payment_status") == "paid" and order_id:
+                    order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+                    if order:
+                        await _finalize_paid_card_order(order, dict(session))
+            except Exception as e:
+                log.warning(f"webhook finalize fail: {e}")
+    return {"received": True}
 
 
 # ==========================================================

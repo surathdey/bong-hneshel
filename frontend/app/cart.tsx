@@ -257,17 +257,8 @@ export default function CartScreen() {
         return;
       }
 
-      // Card / Stripe — TEMPORARILY DISABLED for MVP.
-      if (paymentMethod === "card") {
-        Alert.alert(
-          "Card payments disabled",
-          "We're not accepting card payments right now. Please choose Cash on Delivery or Interac e-Transfer.",
-        );
-        // Clean up the just-created unpaid order.
-        try { await api.post(`/orders/${orderId}/cancel-unpaid`); } catch {}
-        setPlacing(false);
-        return;
-      }
+      // Card / Stripe → continue to hosted Stripe Checkout below
+      // (Apple Pay / Google Pay / cards on the Stripe page).
 
       // If total is 0 (fully covered by points), skip Stripe.
       if (orderResp.data.total_cents <= 0) {
