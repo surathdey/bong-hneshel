@@ -17,7 +17,7 @@ import { BRAND, BRAND_NAME } from "@/src/brand";
 
 type MenuItem = {
   item_id: string; name: string; description: string;
-  price_cents: number; image_url: string; category: string; tags: string[]; is_featured: boolean;
+  price_cents: number; image_url: string; category: string; tags: string[]; is_featured: boolean; veg_type?: string;
 };
 type WeeklyPkg = {
   package_id?: string; name: string; description?: string; price_cents: number;
@@ -30,6 +30,17 @@ type WeeklyMenu = {
   complimentary_items?: Compl[];
 };
 type Catering = { package_id: string; name: string; description: string; min_guests: number; price_cents: number; image_url: string; is_featured: boolean; };
+
+/** Classic Indian veg / non-veg / egg indicator: a bordered square with a dot. */
+function VegMarker({ type }: { type?: string }) {
+  const t = (type || "vegetarian").toLowerCase();
+  const color = t === "non-vegetarian" ? "#C1272D" : t === "eggitarian" ? "#E6A700" : "#0A8F3C";
+  return (
+    <View style={[styles.vegMarker, { borderColor: color }]} testID={`veg-marker-${t}`}>
+      <View style={[styles.vegDot, { backgroundColor: color }]} />
+    </View>
+  );
+}
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -238,7 +249,10 @@ export default function HomeScreen() {
                 >
                   <Image source={{ uri: mediaUrl(it.image_url) }} style={styles.aaImg} />
                   <View style={styles.aaBody}>
-                    <Text style={styles.aaName} numberOfLines={1}>{it.name}</Text>
+                    <View style={styles.nameRow}>
+                      <VegMarker type={it.veg_type} />
+                      <Text style={styles.aaName} numberOfLines={1}>{it.name}</Text>
+                    </View>
                     <Text style={styles.aaDesc} numberOfLines={2}>{it.description}</Text>
                     <View style={styles.aaFoot}>
                       <Text style={styles.aaPrice}>{centsToCAD(it.price_cents)}</Text>
@@ -277,7 +291,10 @@ export default function HomeScreen() {
                 <ImageBackground source={{ uri: mediaUrl(f.image_url) }} style={styles.featImg} imageStyle={{ borderRadius: radius.xl }}>
                   <LinearGradient colors={["transparent", "rgba(0,0,0,0.75)"]} style={[StyleSheet.absoluteFill, { borderRadius: radius.xl }]} />
                   <View style={styles.featBody}>
-                    <Text style={styles.featName} numberOfLines={2}>{f.name}</Text>
+                    <View style={styles.nameRow}>
+                      <VegMarker type={f.veg_type} />
+                      <Text style={styles.featName} numberOfLines={2}>{f.name}</Text>
+                    </View>
                     <View style={styles.featRow}>
                       <Text style={styles.featPrice}>{centsToCAD(f.price_cents)}</Text>
                       <View style={styles.featAdd}><Ionicons name="add" size={16} color="#fff" /></View>
@@ -305,7 +322,10 @@ export default function HomeScreen() {
               >
                 <Image source={{ uri: mediaUrl(it.image_url) }} style={styles.gridImg} />
                 <View style={styles.gridBody}>
-                  <Text style={styles.gridName} numberOfLines={1}>{it.name}</Text>
+                  <View style={styles.nameRow}>
+                    <VegMarker type={it.veg_type} />
+                    <Text style={styles.gridName} numberOfLines={1}>{it.name}</Text>
+                  </View>
                   <Text style={styles.gridDesc} numberOfLines={2}>{it.description}</Text>
                   <View style={styles.gridFoot}>
                     <Text style={styles.gridPrice}>{centsToCAD(it.price_cents)}</Text>
@@ -440,12 +460,12 @@ const styles = StyleSheet.create({
   aaCard: { width: 240, backgroundColor: colors.surface, borderRadius: radius.xl, overflow: "hidden", borderWidth: 1, borderColor: colors.border, ...shadows.card },
   aaImg: { width: "100%", height: 150, backgroundColor: colors.surfaceAlt },
   aaBody: { padding: spacing.md, gap: 4 },
-  aaName: { fontSize: 15, fontWeight: "800", color: colors.text },
+  aaName: { fontSize: 15, fontWeight: "800", color: colors.text, flexShrink: 1 },
   aaDesc: { fontSize: 12, color: colors.textMuted, lineHeight: 16, minHeight: 32 },
   aaFoot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
   aaPrice: { color: colors.primary, fontWeight: "800", fontSize: 15 },
   featBody: { padding: spacing.lg, gap: 8 },
-  featName: { color: "#fff", fontSize: 18, fontWeight: "700", lineHeight: 22 },
+  featName: { color: "#fff", fontSize: 18, fontWeight: "700", lineHeight: 22, flexShrink: 1 },
   featRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   featPrice: {
     color: colors.primary,
@@ -467,7 +487,10 @@ const styles = StyleSheet.create({
   },
   gridImg: { width: "100%", height: 110, backgroundColor: colors.surfaceAlt },
   gridBody: { padding: spacing.md, gap: 4 },
-  gridName: { fontSize: 14, fontWeight: "700", color: colors.text },
+  gridName: { fontSize: 14, fontWeight: "700", color: colors.text, flexShrink: 1 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  vegMarker: { width: 15, height: 15, borderWidth: 1.5, borderRadius: 3, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
+  vegDot: { width: 7, height: 7, borderRadius: 4 },
   gridDesc: { fontSize: 11, color: colors.textMuted, lineHeight: 15, height: 30 },
   gridFoot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
   gridPrice: { color: colors.primary, fontWeight: "800", fontSize: 14 },
