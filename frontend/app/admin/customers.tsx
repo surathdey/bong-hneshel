@@ -58,7 +58,7 @@ export default function AdminCustomers() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [integrationsCfg, setIntegrationsCfg] = useState({ email: false, twilio: false, drive: false, emailRecipient: "" });
-  const [detailCache, setDetailCache] = useState<Record<string, { orders: Order[]; addresses: any[] }>>({});
+  const [detailCache, setDetailCache] = useState<Record<string, { orders: Order[]; addresses: any[]; loyalty_history?: any[]; loyalty_points?: number }>>({});
   const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -111,7 +111,7 @@ export default function AdminCustomers() {
     setLoadingDetail(uid);
     const r = await adminApi.get<any>(`/admin/customers/${uid}`);
     if (r.ok) {
-      setDetailCache(dc => ({ ...dc, [uid]: { orders: r.data?.orders || [], addresses: r.data?.customer?.addresses || [] } }));
+      setDetailCache(dc => ({ ...dc, [uid]: { orders: r.data?.orders || [], addresses: r.data?.customer?.addresses || [], loyalty_history: r.data?.loyalty_history || [], loyalty_points: r.data?.customer?.loyalty_points ?? 0 } }));
     }
     setLoadingDetail(null);
   };
@@ -291,6 +291,29 @@ export default function AdminCustomers() {
                                 {o.status.replace(/_/g, " ")}
                               </Text>
                               <Text style={styles.orderTotal}>CA${(o.total_cents / 100).toFixed(2)}</Text>
+                            </View>
+                          </View>
+                        ))}
+
+                        {/* Loyalty history */}
+                        <Text style={[styles.subhead, { marginTop: spacing.md }]}>
+                          LOYALTY POINTS · BALANCE {detail.loyalty_points ?? c.loyalty_points} PTS
+                        </Text>
+                        {(!detail.loyalty_history || detail.loyalty_history.length === 0) ? (
+                          <Text style={styles.emptyMini}>No points activity yet.</Text>
+                        ) : detail.loyalty_history!.map((h: any) => (
+                          <View key={h.entry_id} style={styles.orderRow} testID={`loyalty-entry-${h.entry_id}`}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.orderTitle}>
+                                {h.type === "earn" ? "Earned" : "Redeemed"} · {fmtDate(h.created_at)}
+                              </Text>
+                              <Text style={styles.orderMeta}>{h.note || `Order #${(h.order_id || "").slice(-6).toUpperCase()}`}</Text>
+                            </View>
+                            <View style={{ alignItems: "flex-end", gap: 4 }}>
+                              <Text style={[styles.orderTotal, { color: h.type === "earn" ? colors.success : colors.primary }]}>
+                                {h.type === "earn" ? "+" : "−"}{h.points} pts
+                              </Text>
+                              {typeof h.balance_after === "number" && <Text style={styles.orderMeta}>bal {h.balance_after}</Text>}
                             </View>
                           </View>
                         ))}

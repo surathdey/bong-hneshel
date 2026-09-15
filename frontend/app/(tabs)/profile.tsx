@@ -17,6 +17,15 @@ export default function ProfileTab() {
   const { clear: clearCart } = useCart();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [loyalty, setLoyalty] = React.useState<{ enabled: boolean; earn: number; redeem: number }>({ enabled: true, earn: 1, redeem: 100 });
+  React.useEffect(() => { (async () => {
+    const r = await api.get<any>("/settings");
+    if (r.ok) setLoyalty({
+      enabled: r.data.loyalty_enabled !== false,
+      earn: r.data.loyalty_earn_points_per_dollar ?? 1,
+      redeem: r.data.loyalty_redeem_points_per_dollar ?? 100,
+    });
+  })(); }, []);
 
   const enablePush = async () => {
     if (Platform.OS === "web") { Alert.alert("Not available", "Push works on device builds only."); return; }
@@ -102,6 +111,7 @@ export default function ProfileTab() {
           </View>
         </SafeAreaView>
 
+        {loyalty.enabled && user.role !== "guest" && (
         <View style={styles.section}>
           <View style={styles.loyaltyCard} testID="loyalty-card">
             <View style={styles.loyaltyHead}>
@@ -110,10 +120,11 @@ export default function ProfileTab() {
             </View>
             <Text style={styles.loyaltyPoints}>{points} <Text style={styles.loyaltyPointsSub}>pts</Text></Text>
             <Text style={styles.loyaltyHint}>
-              Earn 1 point per $1 spent. Redeem 100 points = $1 off future orders.
+              {`Earn ${loyalty.earn} point${loyalty.earn === 1 ? "" : "s"} per $1 spent. Redeem ${loyalty.redeem} points = $1 off future orders.`}
             </Text>
           </View>
         </View>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Preferences</Text>

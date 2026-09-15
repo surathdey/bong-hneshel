@@ -373,6 +373,13 @@ class BusinessSettings(BaseModel):
     tax_label: str = "HST"
     currency: str = BRAND_REGION.get("currency", "CAD")
     company_info: str = ""
+    # ----- Loyalty points program -----
+    # Only logged-in (non-guest) customers earn/redeem. Fully configurable:
+    #   earn:   loyalty_earn_points_per_dollar points for every $1 spent (subtotal)
+    #   redeem: loyalty_redeem_points_per_dollar points = $1 off a future order
+    loyalty_enabled: bool = True
+    loyalty_earn_points_per_dollar: int = 1
+    loyalty_redeem_points_per_dollar: int = 100
     # Per-payment-method configuration.
     # Card (Stripe) shows Apple Pay / Google Pay / cards on the hosted page.
     payment_methods: Dict[str, PaymentMethodConfig] = Field(default_factory=lambda: {
@@ -1395,6 +1402,58 @@ async def _get_settings() -> dict:
     return {**BusinessSettings().model_dump(), **doc}
 
 
+def _loyalty_cfg(settings: dict):
+    """(enabled, earn_points_per_dollar, redeem_points_per_dollar)."""
+    return (
+        bool(settings.get("loyalty_enabled", True)),
+        max(0, int(settings.get("loyalty_earn_points_per_dollar", 1) or 0)),
+        max(1, int(settings.get("loyalty_redeem_points_per_dollar", 100) or 100)),
+    )
+
+
+def _compute_redemption(settings: dict, user, requested_points: int, cap_cents: int):
+    """Convert requested loyalty points into a dollar discount, honouring the
+    configured redeem rate. Guests never redeem. Returns (points_used, cents_off)."""
+    enabled, _earn, redeem_rate = _loyalty_cfg(settings)
+    if not enabled or getattr(user, "role", "customer") == "guest":
+        return 0, 0
+    pts = min(max(0, int(requested_points or 0)), int(getattr(user, "loyalty_points", 0) or 0))
+    if pts <= 0:
+        return 0, 0
+    cents = (pts * 100) // redeem_rate
+    if cents > cap_cents:
+        cents = max(0, cap_cents)
+        pts = (cents * redeem_rate + 99) // 100  # points actually needed for that discount
+        pts = min(pts, int(getattr(user, "loyalty_points", 0) or 0))
+    return pts, cents
+
+
+def _compute_earned(settings: dict, user, subtotal_cents: int) -> int:
+    """Points earned for this order. Guests earn nothing."""
+    enabled, earn_rate, _redeem = _loyalty_cfg(settings)
+    if not enabled or getattr(user, "role", "customer") == "guest":
+        return 0
+    return (subtotal_cents // 100) * earn_rate
+
+
+async def _record_loyalty(user_id: str, order_id: str, earned: int, redeemed: int, balance_after: int):
+    """Append earn/redeem rows to the loyalty ledger for admin history."""
+    now = datetime.now(timezone.utc)
+    docs = []
+    if earned:
+        docs.append({"entry_id": f"ll_{uuid.uuid4().hex[:10]}", "user_id": user_id,
+                     "order_id": order_id, "type": "earn", "points": int(earned),
+                     "balance_after": int(balance_after), "created_at": now,
+                     "note": f"Earned on order #{order_id[-6:].upper()}"})
+    if redeemed:
+        docs.append({"entry_id": f"ll_{uuid.uuid4().hex[:10]}", "user_id": user_id,
+                     "order_id": order_id, "type": "redeem", "points": int(redeemed),
+                     "balance_after": int(balance_after), "created_at": now,
+                     "note": f"Redeemed on order #{order_id[-6:].upper()}"})
+    if docs:
+        await db.loyalty_ledger.insert_many(docs)
+
+
 def _tax_enabled_for_method(settings: dict, payment_method: str) -> bool:
     """Return whether HST should be applied for the given payment_method.
 
@@ -1426,7 +1485,7 @@ async def order_quote(req: QuoteOrderReq, user: User = Depends(_current_user)):
             else:
                 discount = c["value"]
             coupon = c["code"]
-    points_redeem_cents = min(req.redeem_points, user.loyalty_points, max(0, subtotal - discount))
+    _pts_used, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - discount))
     delivery_fee, dist_km, fee_tier = await compute_delivery_fee(req.address, settings)
     taxable = max(0, subtotal + delivery_fee - discount - points_redeem_cents)
     tax_on = _tax_enabled_for_method(settings, req.payment_method)
@@ -1478,7 +1537,7 @@ async def create_order(req: CreateOrderReq, request: Request, user: User = Depen
             else:
                 discount = c["value"]
             coupon_code = c["code"]
-    points_redeem_cents = min(req.redeem_points, user.loyalty_points, max(0, subtotal - discount))
+    points_redeem, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - discount))
     delivery_fee, dist_km, fee_tier = await compute_delivery_fee(req.address, settings)
     taxable = max(0, subtotal + delivery_fee - discount - points_redeem_cents)
     tax_cents = (taxable * settings.get("tax_rate_bps", 1300)) // 10000 if _tax_enabled_for_method(settings, req.payment_method) else 0
@@ -1496,7 +1555,7 @@ async def create_order(req: CreateOrderReq, request: Request, user: User = Depen
             {"status": "new", "ts": now.isoformat(), "note": "Order created"},
             {"status": "confirmed", "ts": now.isoformat(), "note": f"Order confirmed ({label})"},
         ]
-        points_awarded = subtotal // 100
+        points_awarded = _compute_earned(settings, user, subtotal)
     else:
         status = "pending_payment"
         payment_status = "pending"
@@ -1525,6 +1584,7 @@ async def create_order(req: CreateOrderReq, request: Request, user: User = Depen
         tracking_events=tracking,
     )
     order_doc = order.model_dump()
+    order_doc["points_redeemed"] = points_redeem  # points count actually spent (for ledger)
     # Stamp the public base URL (from the request / env) so invoice + tracking
     # links in SMS/email are absolute & clickable, and so later delivery
     # notifications reuse the same origin.
@@ -1566,10 +1626,17 @@ async def create_order(req: CreateOrderReq, request: Request, user: User = Depen
     if payment_method in ("cod", "interac"):
         # Decrement stock immediately (COD + Interac are both confirmed on placement).
         await _decrement_stock_for_order(order.model_dump())
-        await db.users.update_one(
+        net = points_awarded - points_redeem
+        updated = await db.users.find_one_and_update(
             {"user_id": user.user_id},
-            {"$inc": {"loyalty_points": points_awarded - points_redeem_cents}},
+            {"$inc": {"loyalty_points": net}},
+            return_document=True,
         )
+        try:
+            bal = int((updated or {}).get("loyalty_points", 0))
+            await _record_loyalty(user.user_id, order.order_id, points_awarded, points_redeem, bal)
+        except Exception as e:
+            log.warning(f"loyalty ledger fail: {e}")
         try:
             pay_line = (
                 f"Pay CA${total/100:.2f} at delivery." if payment_method == "cod"
@@ -1756,13 +1823,22 @@ async def _finalize_paid_card_order(order: dict, session: dict | None = None):
         await _decrement_stock_for_order(fresh)
     except Exception as e:
         log.warning(f"card stock fail: {e}")
+    settings_fin = await _get_settings()
+    u_doc = await db.users.find_one({"user_id": fresh["user_id"]}, {"_id": 0}) or {}
+    enabled_fin, earn_rate_fin, _rr = _loyalty_cfg(settings_fin)
+    is_guest = (u_doc.get("role") == "guest")
     subtotal = fresh.get("subtotal_cents", 0)
-    points_awarded = subtotal // 100
-    points_redeem_cents = fresh.get("points_redeemed_cents", 0)
+    points_awarded = 0 if (not enabled_fin or is_guest) else (subtotal // 100) * earn_rate_fin
+    points_redeemed = int(fresh.get("points_redeemed", 0) or 0)
     try:
-        await db.users.update_one({"user_id": fresh["user_id"]},
-                                  {"$inc": {"loyalty_points": points_awarded - points_redeem_cents}})
+        updated = await db.users.find_one_and_update(
+            {"user_id": fresh["user_id"]},
+            {"$inc": {"loyalty_points": points_awarded - points_redeemed}},
+            return_document=True,
+        )
+        bal = int((updated or {}).get("loyalty_points", 0))
         await db.orders.update_one({"order_id": fresh["order_id"]}, {"$set": {"points_awarded": points_awarded}})
+        await _record_loyalty(fresh["user_id"], fresh["order_id"], points_awarded, points_redeemed, bal)
     except Exception as e:
         log.warning(f"card points fail: {e}")
     try:
@@ -2721,6 +2797,9 @@ async def public_settings():
         "tax_rate_bps": s.get("tax_rate_bps", 1300),
         "tax_label": s.get("tax_label", "HST"),
         "currency": s.get("currency", "CAD"),
+        "loyalty_enabled": bool(s.get("loyalty_enabled", True)),
+        "loyalty_earn_points_per_dollar": int(s.get("loyalty_earn_points_per_dollar", 1) or 0),
+        "loyalty_redeem_points_per_dollar": int(s.get("loyalty_redeem_points_per_dollar", 100) or 100),
         "home_hero_tagline": s.get("home_hero_tagline", "Order anytime this week — we deliver every weekend."),
         # Expose ONLY safe payment-method fields (never secret keys) so the customer app
         # can render the right method list, apply per-method tax, and show Interac email.
@@ -4018,7 +4097,9 @@ async def admin_customer_detail(user_id: str, admin=Depends(_current_admin)):
         raise HTTPException(404, "Customer not found")
     orders = await db.orders.find({"user_id": user_id}, {"_id": 0}) \
         .sort("created_at", -1).to_list(200)
-    return {"customer": summary[0], "orders": orders}
+    loyalty_history = await db.loyalty_ledger.find({"user_id": user_id}, {"_id": 0}) \
+        .sort("created_at", -1).to_list(200)
+    return {"customer": summary[0], "orders": orders, "loyalty_history": loyalty_history}
 
 
 class CustomersExportReq(BaseModel):

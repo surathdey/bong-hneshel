@@ -29,6 +29,9 @@ type Settings = {
   ordering_days?: number[]; delivery_days?: number[];
   minimum_order_cents: number; tax_enabled: boolean; tax_rate_bps: number; tax_label: string;
   currency: string; company_info: string;
+  loyalty_enabled?: boolean;
+  loyalty_earn_points_per_dollar?: number;
+  loyalty_redeem_points_per_dollar?: number;
   home_hero_tagline?: string;
   notify_email?: string;
   notify_phone?: string;
@@ -57,6 +60,8 @@ export default function AdminSettings() {
   // Distance-based delivery fee tiers (edited as strings; km + CAD).
   const [tiers, setTiers] = useState<{ kmStr: string; feeStr: string }[]>([]);
   const [overStr, setOverStr] = useState("15.00");
+  const [earnStr, setEarnStr] = useState("1");
+  const [redeemStr, setRedeemStr] = useState("100");
 
   const load = useCallback(async () => {
     const r = await adminApi.get<Settings>("/admin/settings");
@@ -85,6 +90,11 @@ export default function AdminSettings() {
         : [{ max_km: 20, fee_cents: 0 }, { max_km: 40, fee_cents: 500 }, { max_km: 75, fee_cents: 1000 }];
       setTiers(tierList.map(t => ({ kmStr: String(t.max_km ?? ""), feeStr: ((t.fee_cents ?? 0) / 100).toFixed(2) })));
       setOverStr(((r.data.delivery_fee_over_max_cents ?? 1500) / 100).toFixed(2));
+      if (typeof r.data.loyalty_enabled !== "boolean") r.data.loyalty_enabled = true;
+      if (typeof r.data.loyalty_earn_points_per_dollar !== "number") r.data.loyalty_earn_points_per_dollar = 1;
+      if (typeof r.data.loyalty_redeem_points_per_dollar !== "number") r.data.loyalty_redeem_points_per_dollar = 100;
+      setEarnStr(String(r.data.loyalty_earn_points_per_dollar ?? 1));
+      setRedeemStr(String(r.data.loyalty_redeem_points_per_dollar ?? 100));
     }
     setLoading(false);
   }, [router]);
@@ -108,6 +118,8 @@ export default function AdminSettings() {
         .filter(t => t.max_km > 0)
         .sort((a, b) => a.max_km - b.max_km),
       delivery_fee_over_max_cents: Math.round((parseFloat(overStr) || 0) * 100),
+      loyalty_earn_points_per_dollar: Math.max(0, Math.round(parseFloat(earnStr) || 0)),
+      loyalty_redeem_points_per_dollar: Math.max(1, Math.round(parseFloat(redeemStr) || 0)),
     };
     const r = await adminApi.put("/admin/settings", body);
     setSaving(false);
@@ -279,6 +291,30 @@ export default function AdminSettings() {
             <Field label="Tax Rate (%)" testID="set-tax-rate" value={rateStr} onChange={setRateStr} keyboardType="decimal-pad" />
           </View>
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Loyalty Points</Text>
+        <TouchableOpacity
+          testID="set-loyalty-toggle"
+          style={[styles.toggleRow, s.loyalty_enabled && styles.toggleRowActive]}
+          onPress={() => setS({ ...s, loyalty_enabled: !s.loyalty_enabled })}
+        >
+          <Ionicons name={s.loyalty_enabled ? "toggle" : "toggle-outline"} size={30} color={s.loyalty_enabled ? colors.success : colors.textMuted} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.toggleTitle}>Loyalty program {s.loyalty_enabled ? "enabled" : "disabled"}</Text>
+            <Text style={styles.toggleSub}>Only logged-in customers earn &amp; redeem points. Guests are excluded.</Text>
+          </View>
+        </TouchableOpacity>
+        {s.loyalty_enabled && (
+          <View style={{ marginTop: spacing.sm }}>
+            <Field label="Earn: points per $1 spent" testID="set-loyalty-earn" value={earnStr} onChange={setEarnStr} keyboardType="number-pad" />
+            <Field label="Redeem: points needed for $1 off" testID="set-loyalty-redeem" value={redeemStr} onChange={setRedeemStr} keyboardType="number-pad" />
+            <Text style={styles.toggleSub}>
+              {`Customers earn ${earnStr || "0"} point${(earnStr === "1") ? "" : "s"} per $1, and ${redeemStr || "100"} points = $1 off a future order.`}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.section}>

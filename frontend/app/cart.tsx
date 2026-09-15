@@ -29,6 +29,7 @@ type PublicSettings = {
   tax_label?: string;
   delivery_days?: number[];
   ordering_days?: number[];
+  loyalty_enabled?: boolean;
 };
 
 const GUEST_ADDRESS_KEY = "curryco.guest_address.v1";
@@ -526,6 +527,7 @@ export default function CartScreen() {
                 {quote?.coupon_code && (
                   <Text style={styles.couponOK}>✓ {quote.coupon_code} applied · saved {centsToCAD(quote.discount_cents)}</Text>
                 )}
+                {publicSettings?.loyalty_enabled !== false && !!user && user.role !== "guest" && (
                 <View style={styles.pointsRow}>
                   <Text style={styles.pointsLabel}>Redeem loyalty points (avail: {user?.loyalty_points || 0})</Text>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -538,6 +540,7 @@ export default function CartScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
+                )}
               </View>
 
               <View style={styles.section}>
