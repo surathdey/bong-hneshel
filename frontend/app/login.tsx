@@ -13,8 +13,10 @@ import { BRAND } from "@/src/brand";
 const MASCOT = require("../assets/brand/mascot.png");
 const LOGIN_BG = require("../assets/brand/login-bg.png");
 
-// Each word of the brand name gets its own colour (readable on the dark photo).
-const WORD_COLORS = ["#FFFFFF", colors.primary, "#F5D06B"];
+// Each word of the brand name gets its own colour. These are chosen to stay
+// readable on the dark photo overlay regardless of the brand's primary colour
+// (the primary can itself be dark — e.g. deep purple — so we don't use it here).
+const WORD_COLORS = ["#FFFFFF", "#F5D06B", "#FFFFFF"];
 
 export default function LoginScreen() {
   const { signIn, signInAsGuest, loading, user } = useAuth();
