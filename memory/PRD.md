@@ -288,3 +288,14 @@ New admin section to manage discount coupons (previously seed-only).
 - UI: list cards w/ badges (Active/Inactive, First order only, Min $), inline active toggle, edit/delete; modal editor with percent/fixed type chips, dollar inputs, active + first-order-only toggles. Web delete uses window.confirm.
 - Also fixed stale old-brand placeholder email (mustardgarden -> bong-hneshel) on admin login.
 - Verified: testing_agent (iteration_7 admin coupons) — backend 10/10 pytest + full admin UI e2e all PASS.
+
+---
+## Security Hardening (2026-09-15)
+Fixed 4 findings from the security audit (all verified):
+- SEC-001: `POST /api/menu/upsert` now requires `_current_admin` (was unauthenticated → price tampering). Not used by frontend (admin uses /admin/menus/*).
+- SEC-002: `POST /api/orders/{id}/status` now requires `_current_admin` (was unauthenticated order-status tampering). Redundant with authed /admin/orders/{id}/status & /delivery/orders/{id}/status.
+- SEC-003: `POST /api/dev/seed` now requires `_current_admin` (was unauthenticated destructive seed).
+- SEC-004: XSS — `/api/invoice/{id}` and `/api/track/{id}` now HTML-escape all customer-supplied fields (name, address, phone, item names, coupon, slot) via `html.escape`. Verified: injected <script> renders as &lt;script&gt;.
+- Refactor: moved `_current_admin` definition up (after `_current_user`) so earlier endpoints can depend on it.
+- NOT fixed (env, per user): SEC-005 LIVE Stripe key + plaintext admin creds in .env — user chose to keep LIVE key.
+Verified via curl: 3 endpoints return 401 unauth / 200 with admin token; admin/coupons regression 200; invoice+track return 200.

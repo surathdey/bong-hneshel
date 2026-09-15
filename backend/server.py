@@ -11,6 +11,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import asyncio
 import logging
+import html as _html
 import uuid
 import httpx
 import stripe
@@ -617,6 +618,19 @@ async def _current_user(authorization: Optional[str] = Header(None)) -> User:
     return User(**user_doc)
 
 
+async def _current_admin(authorization: Optional[str] = Header(None)):
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(401, "Missing admin bearer token")
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+    except JWTError:
+        raise HTTPException(401, "Invalid admin token")
+    if payload.get("role") != "admin":
+        raise HTTPException(403, "Not an admin token")
+    return {"email": payload.get("sub"), "role": "admin"}
+
+
 class SessionInReq(BaseModel):
     session_token: str
 
@@ -1002,8 +1016,8 @@ async def menu_anytime():
 
 
 @api.post("/menu/upsert")
-async def menu_upsert(menu: WeeklyMenu):
-    """Admin endpoint (RBAC deferred — protected by shared secret in production)."""
+async def menu_upsert(menu: WeeklyMenu, admin=Depends(_current_admin)):
+    """Admin endpoint — requires an admin bearer token."""
     doc = menu.model_dump()
     await db.weekly_menus.update_one(
         {"week_start": menu.week_start}, {"$set": doc}, upsert=True
@@ -1969,7 +1983,7 @@ class OrderStatusUpdate(BaseModel):
 
 
 @api.post("/orders/{order_id}/status")
-async def update_order_status(order_id: str, upd: OrderStatusUpdate):
+async def update_order_status(order_id: str, upd: OrderStatusUpdate, admin=Depends(_current_admin)):
     order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(404, "Order not found")
@@ -2234,7 +2248,7 @@ COUPONS_SEED = [
 
 
 @api.post("/dev/seed")
-async def seed():
+async def seed(admin=Depends(_current_admin)):
     """Seed default weekly menu, master menu items, catering packages, coupons, settings."""
     today = datetime.now(timezone.utc).date()
     sun = _sunday_of(today)
@@ -2531,19 +2545,6 @@ async def seed():
 class AdminLoginReq(BaseModel):
     email: str
     password: str
-
-
-async def _current_admin(authorization: Optional[str] = Header(None)):
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(401, "Missing admin bearer token")
-    token = authorization.split(" ", 1)[1].strip()
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
-    except JWTError:
-        raise HTTPException(401, "Invalid admin token")
-    if payload.get("role") != "admin":
-        raise HTTPException(403, "Not an admin token")
-    return {"email": payload.get("sub"), "role": "admin"}
 
 
 @api.post("/admin/login")
@@ -4244,17 +4245,18 @@ async def invoice_html(order_id: str):
     settings = await _get_settings()
     user = await db.users.find_one({"user_id": order["user_id"]}, {"_id": 0})
     dollars = lambda c: f"CA${(c/100):.2f}"
+    esc = lambda v: _html.escape(str(v if v is not None else ""))
     rows = "".join(
-        f"<tr><td>{it['name']}"
-        f"{' · '+str(it.get('catering_guest_count'))+' guests' if it.get('catering_guest_count') else ''}"
-        f"</td><td class='r'>{it['quantity']}</td>"
+        f"<tr><td>{esc(it['name'])}"
+        f"{' · '+esc(it.get('catering_guest_count'))+' guests' if it.get('catering_guest_count') else ''}"
+        f"</td><td class='r'>{esc(it['quantity'])}</td>"
         f"<td class='r'>{dollars(it['unit_price_cents'])}</td>"
         f"<td class='r'>{dollars(it['line_total_cents'])}</td></tr>"
         for it in order.get("items_snapshot", [])
     )
-    tax_row = (f"<tr><td colspan='3' class='r muted'>{order.get('tax_label','HST')}</td>"
+    tax_row = (f"<tr><td colspan='3' class='r muted'>{esc(order.get('tax_label','HST'))}</td>"
                f"<td class='r'>{dollars(order.get('tax_cents',0))}</td></tr>") if order.get("tax_cents") else ""
-    discount_row = (f"<tr><td colspan='3' class='r muted'>Discount ({order.get('coupon_code','')})</td>"
+    discount_row = (f"<tr><td colspan='3' class='r muted'>Discount ({esc(order.get('coupon_code',''))})</td>"
                     f"<td class='r'>−{dollars(order.get('discount_cents',0))}</td></tr>") if order.get("discount_cents") else ""
     points_row = (f"<tr><td colspan='3' class='r muted'>Loyalty points</td>"
                   f"<td class='r'>−{dollars(order.get('points_redeemed_cents',0))}</td></tr>") if order.get("points_redeemed_cents") else ""
@@ -4273,10 +4275,10 @@ table{{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}}th,td{
 @media print{{body{{margin:0}}.no-print{{display:none}}}}
 button{{background:var(--brand);color:#fff;border:0;padding:10px 16px;border-radius:999px;cursor:pointer;font-weight:800}}
 </style></head><body>
-<div class="head"><div><div class="brand">{BRAND_NAME}</div><div class="sub">{settings.get('kitchen_address','Greater Toronto Area · GTA')} · {settings.get('phone','')}</div></div>
+<div class="head"><div><div class="brand">{BRAND_NAME}</div><div class="sub">{esc(settings.get('kitchen_address','Greater Toronto Area · GTA'))} · {esc(settings.get('phone',''))}</div></div>
 <div style="text-align:right"><span class="badge">INVOICE</span><h2>#{order_id[-6:].upper()}</h2><div class="sub">{(order['created_at'].isoformat() if hasattr(order['created_at'], 'isoformat') else str(order['created_at']))[:10]}</div></div></div>
-<div class="grid"><div class="card"><h3>BILL TO</h3><div><strong>{(user or {{}}).get('name','Guest')}</strong></div><div class="muted">{(user or {{}}).get('email','')}</div><div>{order.get('phone','')}</div></div>
-<div class="card"><h3>DELIVER TO</h3><div>{order['address'].get('line1','')}{', '+order['address']['line2'] if order['address'].get('line2') else ''}</div><div class="muted">{order['address'].get('city','')}, {order['address'].get('postal_code','')}</div><div>Slot: {order['slot'].get('window','').replace('_',' ')} · {order['slot'].get('date','')}</div></div></div>
+<div class="grid"><div class="card"><h3>BILL TO</h3><div><strong>{esc((user or {{}}).get('name','Guest'))}</strong></div><div class="muted">{esc((user or {{}}).get('email',''))}</div><div>{esc(order.get('phone',''))}</div></div>
+<div class="card"><h3>DELIVER TO</h3><div>{esc(order['address'].get('line1',''))}{', '+esc(order['address']['line2']) if order['address'].get('line2') else ''}</div><div class="muted">{esc(order['address'].get('city',''))}, {esc(order['address'].get('postal_code',''))}</div><div>Slot: {esc(order['slot'].get('window','').replace('_',' '))} · {esc(order['slot'].get('date',''))}</div></div></div>
 <h3>ITEMS</h3><table><thead><tr><th>Description</th><th class="r">Qty</th><th class="r">Unit</th><th class="r">Total</th></tr></thead>
 <tbody>{rows}
 <tr><td colspan="3" class="r muted">Subtotal</td><td class="r">{dollars(order['subtotal_cents'])}</td></tr>
@@ -4319,8 +4321,9 @@ async def track_html(order_id: str):
         mins = max(1, round(eta_s / 60))
         eta_html = f"<div class='eta'>Estimated arrival: <strong>~{mins} min</strong></div>"
     dollars = lambda c: f"CA${(c/100):.2f}"
+    esc = lambda v: _html.escape(str(v if v is not None else ""))
     item_rows = "".join(
-        f"<li>{it['name']} × {it.get('quantity',1)}{_item_selection_suffix(it)}</li>"
+        f"<li>{esc(it['name'])} × {esc(it.get('quantity',1))}{esc(_item_selection_suffix(it))}</li>"
         for it in order.get("items_snapshot", [])
     )
     step_html = "".join(
@@ -4356,10 +4359,10 @@ a.btn{{display:inline-block;margin-top:8px;background:var(--brand);color:#fff;pa
 <div class="steps">{step_html}</div>
 </div>
 <div class="card"><h3>Your items</h3><ul>{item_rows}</ul>
-<div class="sub">Deliver to: {order['address'].get('line1','')}, {order['address'].get('city','')}</div>
+<div class="sub">Deliver to: {esc(order['address'].get('line1',''))}, {esc(order['address'].get('city',''))}</div>
 <div class="sub" style="margin-top:6px">Total: <strong>{dollars(order.get('total_cents',0))}</strong></div>
 <a class="btn" href="{invoice_url}">View invoice / PDF</a></div>
-<div class="sub" style="text-align:center;margin-top:14px;font-size:12px">This page refreshes automatically · {settings.get('phone','')}</div>
+<div class="sub" style="text-align:center;margin-top:14px;font-size:12px">This page refreshes automatically · {esc(settings.get('phone',''))}</div>
 </body></html>"""
     return HTMLResponse(content=html)
 
