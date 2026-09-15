@@ -9,13 +9,14 @@ KEY = os.environ["EMERGENT_LLM_KEY"]
 OUT = "/app/frontend/assets/brand/login-bg.png"
 
 PROMPT = (
-    "Photorealistic, moody overhead food photograph of an authentic Bengali feast: "
-    "a rich hilsa (ilish) fish mustard curry in a dark bowl and a plate of fragrant "
-    "biryani with a boiled egg and tender meat, surrounded by small katoris of curries, "
-    "steamed rice, lemon wedges and fresh green chillies, on a dark rustic wooden table. "
-    "Warm cinematic side lighting, deep rich shadows, appetizing, restaurant-quality, "
-    "tall vertical portrait composition, negative space toward the bottom, "
-    "no text, no watermark, no people."
+    "Photorealistic, crisp, sharply focused overhead food photograph of a lavish plate "
+    "of Kolkata-style mutton biryani as the clear hero in the centre: fragrant long-grain "
+    "basmati rice with saffron strands, a tender piece of meat, a whole boiled egg and a "
+    "golden fried potato, garnished with fried onions and mint. A few small katoris of "
+    "curry, a hilsa fish piece, lemon wedges and green chillies sit around it on a dark "
+    "rustic wooden table. Bright warm cinematic lighting, high detail, vibrant appetizing "
+    "colours, tall vertical portrait composition with the biryani filling most of the "
+    "frame, some darker negative space toward the bottom, no text, no watermark, no people."
 )
 
 async def main():

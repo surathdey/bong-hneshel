@@ -43,13 +43,12 @@ export default function LoginScreen() {
     <View style={styles.root} testID="login-screen">
       <Image
         source={LOGIN_BG}
-        blurRadius={3}
         style={StyleSheet.absoluteFill}
         resizeMode="cover"
       />
       <LinearGradient
-        colors={["rgba(0,0,0,0.20)", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.90)"]}
-        locations={[0, 0.5, 1]}
+        colors={["rgba(0,0,0,0.22)", "rgba(0,0,0,0.40)", "rgba(0,0,0,0.88)"]}
+        locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFill}
       />
       <SafeAreaView edges={["top", "bottom"]} style={styles.safeInner}>
