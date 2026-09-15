@@ -1,20 +1,20 @@
 {
-  "key": "mustardgarden",
-  "name": "Mustard Garden",
-  "legal_name": "Mustard Garden",
-  "email_from": "orders@mustardgarden.ca",
-  "admin_email": "admin@mustardgarden.ca",
-  "support_email": "support@mustardgarden.ca",
-  "guest_email_domain": "guest.mustardgarden.ca",
-  "delivery_admin_email": "delivery@mustardgarden.ca",
+  "key": "bonghneshel",
+  "name": "Bong Hneshel",
+  "legal_name": "Bong Hneshel",
+  "email_from": "orders@bong-hneshel.ca",
+  "admin_email": "admin@bong-hneshel.ca",
+  "support_email": "support@bong-hneshel.ca",
+  "guest_email_domain": "guest.bong-hneshel.ca",
+  "delivery_admin_email": "delivery@bong-hneshel.ca",
   "region": {
     "country": "CA",
     "currency": "CAD",
     "timezone": "America/Toronto"
   },
   "platform": {
-    "tenant_id": "tnt_264dfe34083a",
-    "api_key": "sk_tnt_b2mdcGJ1TBajUojrmk-rj4n7DXboPsLf",
+    "tenant_id": "",
+    "api_key": "",
     "status_url": "https://control-plane-11.preview.emergentagent.com/api/tenant/status",
     "poll_seconds": 300
   }

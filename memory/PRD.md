@@ -269,3 +269,11 @@ Dev: `/dev/seed`
 - Customer home + menu auto-live via 15s polling so admin changes reflect without manual refresh.
 - New endpoints: POST /admin/menus/create, POST /admin/menus/{w}/complimentary, POST /admin/menus/{w}/lines/{id}/visibility, GET+POST /admin/always-available.
 - Verified: testing_agent iteration_19 (backend 10/10 + full admin & customer UI). Tests: tests/test_weekly_enh_quick.py, tests/test_weekly_enh_iter19.py.
+
+---
+## Rebrand — Bong Hneshel (2026-09-15)
+Tenant rebrand applied via config only (no UI-string hand-edits):
+- `brand.json` + `frontend/brand.config.js`: identity, contact (bong-hneshel.ca), region (CA/CAD/America-Toronto), native bundle IDs (com.bonghneshel.*), copy, tagline "Home Food, Delivered".
+- Palette auto-derived from logo (deep-purple monochrome): primary #3C053C, primaryDark #300430, secondary #1AA34A (180° emerald complement; raw algo fallback #11D311 toned for contrast), accent #2F4F4F.
+- Assets regenerated in `frontend/assets/brand/`: Bong-Hneshel-Logo.jpg, logo-square.png, adaptive-icon.png, splash.png, notification-icon.png, plus mascot.png & login-bg.png refreshed.
+- Backend secrets rotated: new JWT_SECRET + INTEGRATIONS_FERNET_KEY. Stripe/Maps/Email/Twilio left blank per request. Platform tenant_id/api_key cleared (poller short-circuits).
