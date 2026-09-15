@@ -10,7 +10,7 @@ import { BRAND } from "@/src/brand";
 
 export default function AdminLogin() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@mustardgarden.ca");
+  const [email, setEmail] = useState("admin@bong-hneshel.ca");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export default function AdminLogin() {
                 testID="admin-email"
                 value={email} onChangeText={setEmail}
                 autoCapitalize="none" keyboardType="email-address"
-                placeholder="admin@mustardgarden.ca" placeholderTextColor={colors.textMuted}
+                placeholder="admin@bong-hneshel.ca" placeholderTextColor={colors.textMuted}
                 style={styles.input}
               />
             </View>
@@ -75,7 +75,7 @@ export default function AdminLogin() {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.footer}>Default: admin@mustardgarden.ca · password from server env</Text>
+          <Text style={styles.footer}>Default: admin@bong-hneshel.ca · password from server env</Text>
         </View>
       </ScrollView>
     </View>

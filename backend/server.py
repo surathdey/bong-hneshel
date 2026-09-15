@@ -2857,6 +2857,83 @@ async def admin_put_settings(payload: BusinessSettings, admin=Depends(_current_a
     return {"ok": True, "settings": doc}
 
 
+# ---------------- Admin: Coupons CRUD ----------------
+def _clean_coupon_payload(payload: Coupon) -> dict:
+    """Validate + normalise a coupon payload into a storable dict."""
+    doc = payload.model_dump()
+    doc["code"] = (doc.get("code") or "").strip().upper()
+    if not doc["code"]:
+        raise HTTPException(400, "Coupon code is required")
+    if doc["discount_type"] not in ("percent", "fixed"):
+        raise HTTPException(400, "discount_type must be 'percent' or 'fixed'")
+    try:
+        doc["value"] = int(doc.get("value") or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "value must be a number")
+    if doc["discount_type"] == "percent" and not (1 <= doc["value"] <= 100):
+        raise HTTPException(400, "Percent discount must be between 1 and 100")
+    if doc["discount_type"] == "fixed" and doc["value"] < 1:
+        raise HTTPException(400, "Fixed discount must be at least 1 cent")
+    doc["min_order_cents"] = max(0, int(doc.get("min_order_cents") or 0))
+    return doc
+
+
+async def _assert_single_first_time(doc: dict, exclude_code: Optional[str] = None):
+    """Enforce only ONE active first-time coupon at a time."""
+    if not (doc.get("active") and doc.get("first_time_only")):
+        return
+    q = {"active": True, "first_time_only": True, "code": {"$ne": doc["code"]}}
+    if exclude_code and exclude_code != doc["code"]:
+        q["code"] = {"$nin": [doc["code"], exclude_code]}
+    existing = await db.coupons.find_one(q, {"_id": 0, "code": 1})
+    if existing:
+        raise HTTPException(
+            400,
+            f"'{existing['code']}' is already the active first-time coupon. "
+            f"Deactivate it before making this one first-time-only.",
+        )
+
+
+@api.get("/admin/coupons")
+async def admin_list_coupons(admin=Depends(_current_admin)):
+    coupons = await db.coupons.find({}, {"_id": 0}).sort("code", 1).to_list(500)
+    return {"coupons": coupons}
+
+
+@api.post("/admin/coupons")
+async def admin_create_coupon(payload: Coupon, admin=Depends(_current_admin)):
+    doc = _clean_coupon_payload(payload)
+    if await db.coupons.find_one({"code": doc["code"]}):
+        raise HTTPException(400, f"Coupon '{doc['code']}' already exists")
+    await _assert_single_first_time(doc)
+    await db.coupons.insert_one(dict(doc))
+    return {"ok": True, "coupon": doc}
+
+
+@api.put("/admin/coupons/{code}")
+async def admin_update_coupon(code: str, payload: Coupon, admin=Depends(_current_admin)):
+    orig = (code or "").strip().upper()
+    existing = await db.coupons.find_one({"code": orig})
+    if not existing:
+        raise HTTPException(404, "Coupon not found")
+    doc = _clean_coupon_payload(payload)
+    # Renaming to an already-taken code is not allowed.
+    if doc["code"] != orig and await db.coupons.find_one({"code": doc["code"]}):
+        raise HTTPException(400, f"Coupon '{doc['code']}' already exists")
+    await _assert_single_first_time(doc, exclude_code=orig)
+    await db.coupons.update_one({"code": orig}, {"$set": doc})
+    return {"ok": True, "coupon": doc}
+
+
+@api.delete("/admin/coupons/{code}")
+async def admin_delete_coupon(code: str, admin=Depends(_current_admin)):
+    orig = (code or "").strip().upper()
+    r = await db.coupons.delete_one({"code": orig})
+    if r.deleted_count == 0:
+        raise HTTPException(404, "Coupon not found")
+    return {"ok": True}
+
+
 @api.get("/admin/master-menu")
 async def admin_master_list(
     q: Optional[str] = None,

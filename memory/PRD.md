@@ -277,3 +277,14 @@ Tenant rebrand applied via config only (no UI-string hand-edits):
 - Palette auto-derived from logo (deep-purple monochrome): primary #3C053C, primaryDark #300430, secondary #1AA34A (180° emerald complement; raw algo fallback #11D311 toned for contrast), accent #2F4F4F.
 - Assets regenerated in `frontend/assets/brand/`: Bong-Hneshel-Logo.jpg, logo-square.png, adaptive-icon.png, splash.png, notification-icon.png, plus mascot.png & login-bg.png refreshed.
 - Backend secrets rotated: new JWT_SECRET + INTEGRATIONS_FERNET_KEY. Stripe/Maps/Email/Twilio left blank per request. Platform tenant_id/api_key cleared (poller short-circuits).
+
+---
+## Admin Coupons Management (2026-09-15)
+New admin section to manage discount coupons (previously seed-only).
+- New screen `frontend/app/admin/coupons.tsx` + sidebar nav "Coupons" (AdminShell) + route registered in admin/_layout.tsx.
+- Backend CRUD in server.py after `/admin/settings`: `GET /admin/coupons` (list), `POST /admin/coupons` (create), `PUT /admin/coupons/{code}` (update/rename), `DELETE /admin/coupons/{code}` — all guarded by `_current_admin`.
+- Coupon fields: code (uppercased), discount_type percent|fixed, value (percent 1-100 OR cents), active, min_order_cents, description, first_time_only.
+- Rules enforced: unique code, percent 1-100, fixed >=1c, and ONLY ONE active first_time_only coupon at a time (2nd active first-time create/update -> 400 with helpful message). Reuses existing `_apply_coupon` so checkout math is unchanged.
+- UI: list cards w/ badges (Active/Inactive, First order only, Min $), inline active toggle, edit/delete; modal editor with percent/fixed type chips, dollar inputs, active + first-order-only toggles. Web delete uses window.confirm.
+- Also fixed stale old-brand placeholder email (mustardgarden -> bong-hneshel) on admin login.
+- Verified: testing_agent (iteration_7 admin coupons) — backend 10/10 pytest + full admin UI e2e all PASS.

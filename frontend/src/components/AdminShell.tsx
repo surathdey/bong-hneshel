@@ -18,6 +18,7 @@ const NAV = [
   { key: "/admin/menu", label: "Weekly Menu", icon: "restaurant-outline" as const },
   { key: "/admin/catering", label: "Catering", icon: "people-outline" as const },
   { key: "/admin/orders", label: "Orders", icon: "bag-handle-outline" as const },
+  { key: "/admin/coupons", label: "Coupons", icon: "pricetag-outline" as const },
   { key: "/admin/customers", label: "Customers", icon: "person-circle-outline" as const },
   { key: "/admin/delivery", label: "Delivery", icon: "bicycle-outline" as const },
   { key: "/admin/billing", label: "Billing", icon: "card-outline" as const },
