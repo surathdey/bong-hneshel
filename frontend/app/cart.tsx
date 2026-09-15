@@ -30,6 +30,8 @@ type PublicSettings = {
   delivery_days?: number[];
   ordering_days?: number[];
   loyalty_enabled?: boolean;
+  loyalty_earn_points_per_dollar?: number;
+  loyalty_redeem_points_per_dollar?: number;
 };
 
 const GUEST_ADDRESS_KEY = "curryco.guest_address.v1";
@@ -527,20 +529,49 @@ export default function CartScreen() {
                 {quote?.coupon_code && (
                   <Text style={styles.couponOK}>✓ {quote.coupon_code} applied · saved {centsToCAD(quote.discount_cents)}</Text>
                 )}
-                {publicSettings?.loyalty_enabled !== false && !!user && user.role !== "guest" && (
-                <View style={styles.pointsRow}>
-                  <Text style={styles.pointsLabel}>Redeem loyalty points (avail: {user?.loyalty_points || 0})</Text>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <TouchableOpacity testID="points-dec" onPress={() => setRedeemPoints(p => Math.max(0, p - 100))} style={styles.stepperBtn}>
-                      <Ionicons name="remove" size={16} color={colors.text} />
-                    </TouchableOpacity>
-                    <Text style={styles.qty}>{redeemPoints}</Text>
-                    <TouchableOpacity testID="points-inc" onPress={() => setRedeemPoints(p => Math.min(user?.loyalty_points || 0, p + 100))} style={styles.stepperBtn}>
-                      <Ionicons name="add" size={16} color={colors.text} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                )}
+                {publicSettings?.loyalty_enabled !== false && (() => {
+                  const redeemStep = Math.max(1, publicSettings?.loyalty_redeem_points_per_dollar || 100);
+                  const isMember = !!user && user.role !== "guest";
+                  if (!isMember) {
+                    return (
+                      <TouchableOpacity testID="cart-loyalty-signin" style={styles.loyaltyPrompt} onPress={() => router.push("/login")}>
+                        <Ionicons name="sparkles" size={16} color={colors.secondary} />
+                        <Text style={styles.loyaltyPromptText}>Sign in to earn &amp; redeem loyalty points</Text>
+                        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+                      </TouchableOpacity>
+                    );
+                  }
+                  const avail = user?.loyalty_points || 0;
+                  const maxRedeemable = Math.floor(avail / redeemStep) * redeemStep;
+                  return (
+                    <View style={styles.pointsBlock} testID="cart-loyalty-block">
+                      <View style={styles.pointsRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.pointsLabel}>Redeem loyalty points</Text>
+                          <Text style={styles.pointsSub}>{avail} pts available · {redeemStep} pts = $1 off</Text>
+                        </View>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <TouchableOpacity testID="points-dec" onPress={() => setRedeemPoints(p => Math.max(0, p - redeemStep))} style={styles.stepperBtn}>
+                            <Ionicons name="remove" size={16} color={colors.text} />
+                          </TouchableOpacity>
+                          <Text style={styles.qty} testID="points-value">{redeemPoints}</Text>
+                          <TouchableOpacity testID="points-inc" onPress={() => setRedeemPoints(p => Math.min(maxRedeemable, p + redeemStep))} style={styles.stepperBtn}>
+                            <Ionicons name="add" size={16} color={colors.text} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      {maxRedeemable >= redeemStep ? (
+                        <TouchableOpacity testID="points-max" onPress={() => setRedeemPoints(redeemPoints === maxRedeemable ? 0 : maxRedeemable)}>
+                          <Text style={styles.pointsMax}>
+                            {redeemPoints === maxRedeemable ? "Clear points" : `Use max — ${maxRedeemable} pts = ${centsToCAD(Math.floor(maxRedeemable / redeemStep) * 100)} off`}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <Text style={styles.pointsSub}>Earn {redeemStep} points to unlock $1 off — keep ordering!</Text>
+                      )}
+                    </View>
+                  );
+                })()}
               </View>
 
               <View style={styles.section}>
@@ -708,7 +739,12 @@ const styles = StyleSheet.create({
   applyBtnText: { color: "#fff", fontWeight: "700" },
   couponOK: { color: colors.success, fontWeight: "700", fontSize: 12 },
   pointsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
-  pointsLabel: { color: colors.text, fontSize: 12, flex: 1 },
+  pointsLabel: { color: colors.text, fontSize: 13, fontWeight: "700", flexShrink: 1 },
+  pointsSub: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
+  pointsBlock: { marginTop: spacing.sm, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
+  pointsMax: { color: colors.primary, fontSize: 12, fontWeight: "700", marginTop: spacing.sm },
+  loyaltyPrompt: { marginTop: spacing.sm, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingVertical: spacing.md, paddingHorizontal: spacing.md },
+  loyaltyPromptText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: "600" },
 
   summaryBox: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border },
   feeHint: { fontSize: 11, color: colors.textMuted, marginTop: -4, marginBottom: 2 },

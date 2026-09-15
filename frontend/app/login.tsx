@@ -24,7 +24,9 @@ export default function LoginScreen() {
   const [guestLoading, setGuestLoading] = React.useState(false);
 
   React.useEffect(() => {
-    if (!loading && user) router.replace("/(tabs)");
+    // Guests are NOT fully authenticated — let them reach this screen to sign in
+    // (e.g. from the cart "Sign in to earn & redeem loyalty points" prompt).
+    if (!loading && user && user.role !== "guest") router.replace("/(tabs)");
   }, [loading, user, router]);
 
   const onSignIn = async () => {
@@ -34,7 +36,11 @@ export default function LoginScreen() {
 
   const onGuest = async () => {
     setGuestLoading(true);
-    try { await signInAsGuest(); } finally { setGuestLoading(false); }
+    try {
+      await signInAsGuest();
+      // The redirect guard intentionally skips guests, so navigate explicitly.
+      router.replace("/(tabs)");
+    } finally { setGuestLoading(false); }
   };
 
   const words = (BRAND.name || "").trim().split(/\s+/);
