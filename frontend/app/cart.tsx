@@ -647,7 +647,7 @@ export default function CartScreen() {
                   <View style={styles.policyBox} testID="cart-delivery-policy">
                     <View style={styles.policyRow}>
                       <Ionicons name="time-outline" size={14} color={colors.primary} />
-                      <Text style={styles.policyText}>Delivery hours: {quote.delivery_time_window || "6:00 AM – 8:00 PM"}</Text>
+                      <Text style={styles.policyText}>Delivery hours: {quote.delivery_time_window || "6:00 PM – 10:00 PM"}</Text>
                     </View>
                     <View style={styles.policyRow}>
                       <Ionicons name="business-outline" size={14} color={colors.primary} />
@@ -742,7 +742,7 @@ const styles = StyleSheet.create({
   slot: { flexShrink: 0, height: 44, paddingHorizontal: 16, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
   slotActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   slotText: { color: colors.text, fontWeight: "600", fontSize: 13 },
-  slotTextActive: { color: "#1a1a1a", fontWeight: "800" },
+  slotTextActive: { color: "#fff", fontWeight: "800" },
   noSlotBox: { flexDirection: "row", alignItems: "center", gap: 8, padding: spacing.md, backgroundColor: "#FEF3C7", borderRadius: radius.md, borderWidth: 1, borderColor: "#FDE68A" },
   noSlotText: { flex: 1, color: "#7C4A03", fontSize: 12, fontWeight: "600" },
 

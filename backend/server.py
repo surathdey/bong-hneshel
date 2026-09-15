@@ -1124,7 +1124,7 @@ DEFAULT_DELIVERY_FEE_TIERS = [
     {"max_km": 75, "fee_cents": 1000},
 ]
 DEFAULT_DELIVERY_FEE_OVER_MAX_CENTS = 1500
-DELIVERY_TIME_WINDOW = "6:00 AM – 8:00 PM"
+DELIVERY_TIME_WINDOW = "6:00 PM – 10:00 PM"
 DELIVERY_CONDO_POLICY = (
     "Condo & apartment deliveries: please collect your food from the building gate — "
     "our drivers cannot deliver to individual unit doors."
