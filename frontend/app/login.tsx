@@ -13,10 +13,9 @@ import { BRAND } from "@/src/brand";
 const MASCOT = require("../assets/brand/mascot.png");
 const LOGIN_BG = require("../assets/brand/login-bg.png");
 
-// Each word of the brand name gets its own colour. These are chosen to stay
-// readable on the dark photo overlay regardless of the brand's primary colour
-// (the primary can itself be dark — e.g. deep purple — so we don't use it here).
-const WORD_COLORS = ["#FFFFFF", "#F5D06B", "#FFFFFF"];
+// Brand name renders in white so it stays legible on the dark overlay
+// regardless of the tenant's primary colour.
+const WORD_COLORS = ["#FFFFFF"];
 
 export default function LoginScreen() {
   const { signIn, signInAsGuest, loading, user } = useAuth();
@@ -68,7 +67,7 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.bottom}>
-          <Text style={styles.eyebrow} testID="login-tagline">EXOTIC FLAVORS OF INDIA</Text>
+          <Text style={styles.eyebrow} testID="login-tagline">Home Food, Delivered</Text>
           <Text style={styles.title}>Slow-cooked{"\n"}stories on your plate.</Text>
           <Text style={styles.subtitle}>
             A rotating weekly menu of exotic Indian classics, delivered fresh every Friday evening
@@ -138,7 +137,7 @@ const styles = StyleSheet.create({
   logoImg: { width: "100%", height: "100%" },
   brand: { fontSize: 22, fontWeight: "800", letterSpacing: 0.3 },
   bottom: { gap: spacing.md },
-  eyebrow: { color: colors.primary, letterSpacing: 3, fontSize: 11, fontWeight: "800" },
+  eyebrow: { color: "#FFFFFF", letterSpacing: 3, fontSize: 11, fontWeight: "800" },
   title: { color: "#fff", fontSize: 40, fontWeight: "800", lineHeight: 44, letterSpacing: -0.5 },
   subtitle: { color: "rgba(255,255,255,0.82)", fontSize: 15, lineHeight: 22, marginTop: spacing.sm },
   googleBtn: {
