@@ -376,7 +376,7 @@ class BusinessSettings(BaseModel):
     # Per-payment-method configuration.
     # Card (Stripe) shows Apple Pay / Google Pay / cards on the hosted page.
     payment_methods: Dict[str, PaymentMethodConfig] = Field(default_factory=lambda: {
-        "stripe":  PaymentMethodConfig(enabled=True,  tax_enabled=True),
+        "stripe":  PaymentMethodConfig(enabled=True,  tax_enabled=False),
         "paypal":  PaymentMethodConfig(enabled=False, tax_enabled=True),
         "cod":     PaymentMethodConfig(enabled=True,  tax_enabled=True),
         "interac": PaymentMethodConfig(enabled=True,  tax_enabled=True,

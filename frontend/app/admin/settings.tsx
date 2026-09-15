@@ -39,7 +39,7 @@ type Settings = {
 
 const DEFAULT_METHODS: NonNullable<Settings["payment_methods"]> = {
   // Stripe disabled for MVP — flip back to `true` when Stripe is re-enabled.
-  stripe:  { enabled: false, tax_enabled: true, publishable_key: "", secret_key: "" },
+  stripe:  { enabled: true,  tax_enabled: false, publishable_key: "", secret_key: "" },
   paypal:  { enabled: false, tax_enabled: true, client_id: "", client_secret: "" },
   cod:     { enabled: true,  tax_enabled: true },
   interac: { enabled: true,  tax_enabled: true, email: "orders@curryandco.ca", instructions: "Please note your order ID in the message field." },
@@ -283,28 +283,17 @@ export default function AdminSettings() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Payment Methods · {enabledCount} enabled</Text>
-        {/*
-          Stripe (Card) is temporarily disabled for MVP. Only COD and Interac
-          are active. To re-enable Stripe later:
-          (1) uncomment this block, (2) flip `payment_methods.stripe.enabled`
-          in business_settings, (3) uncomment the /api/checkout/* endpoints
-          in backend/server.py.
-        */}
-        {/*
+
         <PaymentCard
           testIDPrefix="pm-stripe"
           title="Stripe (Card + Google Pay + Apple Pay)"
           icon="card"
           brand="#635BFF"
-          desc="Accepts Visa/Mastercard/Amex plus GPay & Apple Pay (auto-included)."
+          desc="Visa/Mastercard/Amex plus Google Pay & Apple Pay. Secret key is set securely on the server."
           cfg={pm.stripe || DEFAULT_METHODS.stripe}
           onPatch={p => patchMethod("stripe", p)}
           taxLabel={s.tax_label}
-        >
-          <Field label="Stripe Publishable Key (pk_...)" testID="pm-stripe-pk" value={pm.stripe?.publishable_key || ""} onChange={t => patchMethod("stripe", { publishable_key: t })} />
-          <Field label="Stripe Secret Key (sk_...)"      testID="pm-stripe-sk" value={pm.stripe?.secret_key || ""}       onChange={t => patchMethod("stripe", { secret_key: t })} secureTextEntry />
-        </PaymentCard>
-        */}
+        />
 
         <PaymentCard
           testIDPrefix="pm-paypal"
