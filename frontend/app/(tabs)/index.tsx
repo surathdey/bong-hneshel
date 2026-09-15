@@ -139,8 +139,8 @@ export default function HomeScreen() {
             <Text style={styles.heroSubtitle} testID="home-hero-tagline">{heroTagline}</Text>
             <View style={styles.chipRow}>
               <View style={[styles.windowChip, { backgroundColor: window.open ? colors.primary : "#444" }]}>
-                <Ionicons name={window.open ? "checkmark-circle" : "time"} size={14} color={window.open ? "#1a1a1a" : "#fff"} />
-                <Text style={[styles.windowChipText, !window.open && { color: "#fff" }]}>{window.note}</Text>
+                <Ionicons name={window.open ? "checkmark-circle" : "time"} size={14} color="#fff" />
+                <Text style={styles.windowChipText}>{window.note}</Text>
               </View>
               {deliveryDrops.length > 0 && (
                 <View style={[styles.windowChip, styles.deliveryChip]} testID="home-next-delivery">
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, marginTop: 8,
   },
-  windowChipText: { color: "#1a1a1a", fontSize: 12, fontWeight: "700" },
+  windowChipText: { color: "#fff", fontSize: 12, fontWeight: "700" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, alignItems: "center" },
   deliveryChip: { backgroundColor: "rgba(255,255,255,0.18)", borderWidth: 1, borderColor: "rgba(255,255,255,0.35)" },
   deliveryChipText: { color: "#fff", fontSize: 12, fontWeight: "700" },
