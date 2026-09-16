@@ -28,7 +28,7 @@ export default function AdminLogin() {
       <ScrollView contentContainerStyle={styles.center}>
         <View style={styles.card} testID="admin-login-card">
           <View style={styles.brandRow}>
-            <View style={styles.logo}><Text style={styles.logoText}>C</Text></View>
+            <View style={styles.logo}><Text style={styles.logoText}>{(BRAND.name || "B").trim().charAt(0).toUpperCase()}</Text></View>
             <View>
               <Text style={styles.brand}>{BRAND.name}</Text>
               <Text style={styles.brandSub}>Admin Portal</Text>

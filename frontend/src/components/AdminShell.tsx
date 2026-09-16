@@ -39,7 +39,7 @@ export default function AdminShell({ children, title }: { children: React.ReactN
   const nav = (
     <View style={[styles.nav, wide ? styles.navWide : styles.navMobile]}>
       <View style={styles.brandRow}>
-        <View style={styles.logo}><Text style={styles.logoText}>C</Text></View>
+        <View style={styles.logo}><Text style={styles.logoText}>{(BRAND.name || "B").trim().charAt(0).toUpperCase()}</Text></View>
         {wide && (
           <View>
             <Text style={styles.brand}>{BRAND.name}</Text>
