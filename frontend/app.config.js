@@ -96,6 +96,8 @@ const variants = {
       infoPlist: {
         NSLocationWhenInUseUsageDescription:
           "Show your live location so we can optimize delivery routes and share ETA with customers.",
+        NSCameraUsageDescription: "Capture proof-of-delivery photos at drop-off",
+        NSPhotoLibraryUsageDescription: "Attach delivery photos from your library",
         // NOTE: We only poll geolocation in-foreground while the driver app is
         // open. Do NOT declare NSLocationAlwaysAndWhenInUseUsageDescription
         // unless we actually implement background tracking — over-declaration
@@ -112,6 +114,7 @@ const variants = {
       package: brand.native.delivery.androidPackage,
       permissions: [
         "NOTIFICATIONS",
+        "CAMERA",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         // ACCESS_BACKGROUND_LOCATION intentionally removed — foreground-only.
