@@ -18,24 +18,26 @@ export default function FirstOrderBanner() {
   const router = useRouter();
   const { user } = useAuth();
   const [hidden, setHidden] = React.useState(false);
-  const [eligible, setEligible] = React.useState(true);
+  const [coupon, setCoupon] = React.useState<any>(null);
 
   React.useEffect(() => {
     let alive = true;
     (async () => {
-      if (user && user.role !== "guest") {
-        const r = await api.get<any>("/coupons/first-time");
-        if (alive) setEligible(!!(r.ok && r.data?.coupon));
-      } else {
-        if (alive) setEligible(true); // guests: entice them to sign in
-      }
+      // Logged-in customers get the eligibility-aware endpoint (null once they've ordered);
+      // everyone else (guests / logged out) gets the public promo coupon.
+      const path = user && user.role !== "guest" ? "/coupons/first-time" : "/coupons/promo";
+      const r = await api.get<any>(path);
+      if (alive) setCoupon(r.ok ? r.data?.coupon ?? null : null);
     })();
     return () => { alive = false; };
   }, [user]);
 
-  if (hidden || !eligible) return null;
+  if (hidden || !coupon) return null;
 
   const isGuest = !user || user.role === "guest";
+  const discountLabel = coupon.discount_type === "percent"
+    ? `${coupon.value}% OFF`
+    : `$${(Number(coupon.value) / 100).toFixed(2)} OFF`;
 
   return (
     <LinearGradient
@@ -51,7 +53,7 @@ export default function FirstOrderBanner() {
       >
         <Ionicons name="gift" size={18} color="#FFFFFF" />
         <Text style={styles.text} numberOfLines={1}>
-          <Text style={styles.bold}>10% OFF</Text> your first order — code <Text style={styles.bold}>FIRST10</Text>
+          <Text style={styles.bold}>{discountLabel}</Text> your first order — code <Text style={styles.bold}>{coupon.code}</Text>
         </Text>
         <View style={styles.cta}>
           <Text style={styles.ctaText}>{isGuest ? "Sign in" : "Order"}</Text>

@@ -321,3 +321,9 @@ Added email/password login to the customer login screen (previously Google + gue
 - **Welcome email (all new customers)**: `_send_welcome_email(user_doc)` helper fired via `asyncio.create_task` from BOTH `/auth/register` and `/auth/session` new-user branch. Best-effort (never blocks/errors signup). Dynamically includes the ACTIVE first_time_only coupon from Admin→Coupons if one exists; otherwise omits the offer line. Skips guest placeholder emails. NOTE: no first-order coupon exists in DB yet — owner must create one in Admin → Coupons (first-order-only) for it to appear in the email.
 - **Loyalty gate (cart)**: `cart-loyalty-gate` nudge shown to logged-in members with no phone, inviting them to add one to earn points.
 - Verified: testing_agent iteration_9 — backend 8/8 pytest + all frontend flows. Tests: `backend/tests/test_profile_welcome_iter9.py`. Minor non-blocking UX note: profile modal Save can sit below fold on small screens.
+
+---
+## Dynamic first-order banner (2026-06)
+- `FirstOrderBanner.tsx` no longer hardcodes "10% OFF / FIRST10". It now fetches the active first-order coupon and renders its real code + discount (e.g. "20% OFF … WELCOME20"). Hides entirely if no active first_time_only coupon exists.
+- Logged-in customers use eligibility-aware `GET /api/coupons/first-time` (null after they've ordered); guests/logged-out use new public `GET /api/coupons/promo`.
+- Verified via curl (`/coupons/promo` → WELCOME20) + screenshot (guest home shows "20% OFF your first order — code WELCOME20").

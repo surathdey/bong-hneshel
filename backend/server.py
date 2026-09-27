@@ -1305,6 +1305,13 @@ async def first_time_coupon(user: User = Depends(_current_user)):
     return {"coupon": c}
 
 
+@api.get("/coupons/promo")
+async def promo_coupon():
+    """Public: the active first-order coupon for marketing banners (no eligibility check)."""
+    c = await db.coupons.find_one({"active": True, "first_time_only": True}, {"_id": 0})
+    return {"coupon": c}
+
+
 async def _apply_coupon(code: Optional[str], subtotal: int, user):
     """Validate a coupon for this user/order and return (discount_cents, code_or_None).
     Enforces min-order and first-time-only (logged-in, no prior orders) rules."""
