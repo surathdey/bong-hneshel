@@ -304,3 +304,12 @@ Verified via curl: 3 endpoints return 401 unauth / 200 with admin token; admin/c
 ## README overhaul (2026-06)
 - Rewrote stale `/app/README.md` (was branded "Curry & Co.", SDK 53, wrong DB/env names). Now fully documents Bong Hneshel: three-app architecture, full feature catalogue (customer/delivery/admin), all integrations, correct env vars (DB_NAME=bonghneshel_db, STRIPE_API_KEY, EMERGENT_* keys, REVIEWER_*), SDK 57 / RN 0.86.3 stack, seeded accounts, prod web_dist serving, pytest suite, rebranding pointer. Docs-only change; no code touched.
 - Also supplied Apple 2.1 review-notes copy (purpose/audience/problem/value) for App Store Connect.
+
+---
+## Email + Password Auth (2026-06)
+Added email/password login to the customer login screen (previously Google + guest only). Confirmed scope: sign-up + login + forgot/reset.
+- Backend (`server.py`, via auth playbook): `POST /api/auth/register`, `/auth/login`, `/auth/forgot-password`, `/auth/reset-password`. Issues the SAME opaque `session_token` (prefixed `pw-`) as Google/guest via new helper `_issue_customer_session`, so `_current_user` is unchanged. Passwords hashed with existing passlib bcrypt (`_pwd`). Duplicate email → 409, wrong creds → generic 401, dummy-hash verify to equalize timing.
+- Password reset = single-use 6-digit code emailed via Resend (`_email.send_email`), stored as sha256 hash in new `password_reset_codes` collection (TTL 15 min, max 5 attempts). On reset: sets new password_hash + invalidates all sessions.
+- **This activates the seeded reviewer account** (`reviewer@bong-hneshel.ca`) which previously had a password_hash but no login route — fixes Apple's "provide working demo credentials" request.
+- Frontend: `src/auth.tsx` gained `signInWithEmail`/`signUpWithEmail`; new screen `app/email-auth.tsx` (login/signup/forgot/reset modes); `app/login.tsx` "Continue with email" button; route registered in `app/_layout.tsx`.
+- Verified: testing_agent iteration_8 — backend 16/16 + all frontend flows incl. reviewer login. Tests: `backend/tests/test_email_auth_iter8.py`.

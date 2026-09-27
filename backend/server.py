@@ -13,6 +13,7 @@ import asyncio
 import logging
 import html as _html
 import uuid
+import hashlib
 import httpx
 import stripe
 from pathlib import Path
@@ -709,6 +710,159 @@ async def logout(authorization: Optional[str] = Header(None)):
         token = authorization.split(" ", 1)[1].strip()
         await db.user_sessions.delete_one({"session_token": token})
     return {"ok": True}
+
+
+# --------------------------------------------------------------
+# Email + password auth. Issues the SAME opaque session_token that
+# Google/guest login use, so `_current_user` keeps working unchanged.
+# Password reset uses a 6-digit code emailed via the Resend integration.
+# --------------------------------------------------------------
+_RESET_CODE_TTL_MIN = 15
+_RESET_MAX_ATTEMPTS = 5
+_DUMMY_PW_HASH = _pwd.hash("dummy-password-to-equalize-timing")
+
+
+async def _issue_customer_session(user_id: str, days: int = 30) -> str:
+    token = f"pw-{uuid.uuid4().hex}{uuid.uuid4().hex}"
+    await db.user_sessions.insert_one({
+        "session_token": token,
+        "user_id": user_id,
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + timedelta(days=days),
+    })
+    return token
+
+
+def _norm_email(v: str) -> str:
+    return (v or "").strip().lower()
+
+
+def _code_hash(code: str) -> str:
+    return hashlib.sha256(code.encode("utf-8")).hexdigest()
+
+
+class EmailRegisterReq(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    name: Optional[str] = None
+
+
+class EmailLoginReq(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+
+class ForgotPasswordReq(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordReq(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=4, max_length=10)
+    password: str = Field(min_length=8, max_length=128)
+
+
+@api.post("/auth/register")
+async def register_with_email(req: EmailRegisterReq):
+    """Create a customer account with email + password; returns a session token."""
+    email = _norm_email(str(req.email))
+    existing = await db.users.find_one({"email": email}, {"_id": 0})
+    if existing:
+        raise HTTPException(409, "An account with this email already exists. Try signing in instead.")
+    name = (req.name or "").strip() or email.split("@")[0]
+    user = User(user_id=f"user_{uuid.uuid4().hex[:12]}", email=email, name=name, role="customer")
+    doc = user.model_dump()
+    doc["password_hash"] = _pwd.hash(req.password)
+    doc["provider"] = "password"
+    await db.users.insert_one(doc)
+    token = await _issue_customer_session(user.user_id)
+    return {"session_token": token, "user": user.model_dump()}
+
+
+@api.post("/auth/login")
+async def login_with_email(req: EmailLoginReq):
+    """Log in an existing customer with email + password."""
+    email = _norm_email(str(req.email))
+    user_doc = await db.users.find_one({"email": email}, {"_id": 0})
+    stored = user_doc.get("password_hash") if user_doc else None
+    ok = False
+    try:
+        # Always run a verify (against a dummy hash when missing) to equalize timing.
+        ok = _pwd.verify(req.password, stored or _DUMMY_PW_HASH)
+    except Exception:
+        ok = False
+    if not user_doc or not stored or not ok:
+        raise HTTPException(401, "Incorrect email or password")
+    user = User(**user_doc)
+    token = await _issue_customer_session(user.user_id)
+    return {"session_token": token, "user": user.model_dump()}
+
+
+@api.post("/auth/forgot-password")
+async def forgot_password(req: ForgotPasswordReq):
+    """Email a single-use 6-digit reset code. Always returns a generic response."""
+    email = _norm_email(str(req.email))
+    generic = {"ok": True, "message": "If an account exists for that email, a reset code has been sent."}
+    user_doc = await db.users.find_one({"email": email}, {"_id": 0, "user_id": 1})
+    if not user_doc:
+        return generic
+    code = f"{_secrets.randbelow(1000000):06d}"
+    await db.password_reset_codes.delete_many({"email": email})
+    await db.password_reset_codes.insert_one({
+        "email": email,
+        "code_hash": _code_hash(code),
+        "attempts": 0,
+        "used": False,
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + timedelta(minutes=_RESET_CODE_TTL_MIN),
+    })
+    try:
+        html_body = (
+            "<p>Hi,</p>"
+            f"<p>Your {_html.escape(BRAND_NAME)} password reset code is:</p>"
+            f"<p style='font-size:28px;font-weight:700;letter-spacing:4px'>{code}</p>"
+            f"<p>This code expires in {_RESET_CODE_TTL_MIN} minutes. "
+            "If you did not request this, you can safely ignore this email.</p>"
+        )
+        await _email.send_email(to=email, subject=f"{BRAND_NAME} — Your password reset code", html=html_body)
+    except Exception as e:
+        log.warning(f"reset email send failed: {e}")
+    return generic
+
+
+@api.post("/auth/reset-password")
+async def reset_password(req: ResetPasswordReq):
+    """Verify the emailed code and set a new password; invalidates all sessions."""
+    email = _norm_email(str(req.email))
+    now = datetime.now(timezone.utc)
+    rec = await db.password_reset_codes.find_one({"email": email})
+
+    def _bad():
+        raise HTTPException(400, "Invalid or expired reset code")
+
+    if not rec or rec.get("used"):
+        _bad()
+    exp = rec.get("expires_at")
+    if isinstance(exp, datetime) and exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    if not exp or exp < now:
+        _bad()
+    if rec.get("attempts", 0) >= _RESET_MAX_ATTEMPTS:
+        _bad()
+    if _code_hash(req.code) != rec.get("code_hash"):
+        await db.password_reset_codes.update_one({"_id": rec["_id"]}, {"$inc": {"attempts": 1}})
+        _bad()
+    user_doc = await db.users.find_one({"email": email}, {"_id": 0, "user_id": 1})
+    if not user_doc:
+        _bad()
+    await db.password_reset_codes.update_one({"_id": rec["_id"]}, {"$set": {"used": True, "used_at": now}})
+    await db.users.update_one(
+        {"email": email},
+        {"$set": {"password_hash": _pwd.hash(req.password), "provider": "password"}},
+    )
+    # Force re-login everywhere after a password change.
+    await db.user_sessions.delete_many({"user_id": user_doc["user_id"]})
+    return {"ok": True, "message": "Password updated. You can now sign in."}
 
 
 # --------------------------------------------------------------
@@ -5773,6 +5927,8 @@ async def _startup():
         await db.user_sessions.create_index("session_token", unique=True)
         await db.user_sessions.create_index("user_id")
         await db.user_sessions.create_index("expires_at", expireAfterSeconds=0)
+        await db.password_reset_codes.create_index("email")
+        await db.password_reset_codes.create_index("expires_at", expireAfterSeconds=0)
         await db.weekly_menus.create_index("week_start", unique=True)
         await db.orders.create_index("order_id", unique=True)
         await db.orders.create_index("user_id")

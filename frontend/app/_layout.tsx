@@ -111,6 +111,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="login" />
+            <Stack.Screen name="email-auth" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="cart" options={{ presentation: "modal" }} />
             <Stack.Screen name="order/[id]" />

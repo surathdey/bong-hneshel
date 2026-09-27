@@ -24,6 +24,8 @@ type AuthState = {
   loading: boolean;
   signIn: () => Promise<void>;
   signInAsGuest: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  signUpWithEmail: (email: string, password: string, name?: string) => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -33,6 +35,8 @@ const AuthContext = createContext<AuthState>({
   loading: true,
   signIn: async () => {},
   signInAsGuest: async () => {},
+  signInWithEmail: async () => ({ ok: false }),
+  signUpWithEmail: async () => ({ ok: false }),
   signOut: async () => {},
   refresh: async () => {},
 });
@@ -113,6 +117,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
+    const r = await api.post<{ session_token: string; user: CurrentUser }>("/auth/login", {
+      email: email.trim(),
+      password,
+    });
+    if (r.ok) {
+      await setToken(r.data.session_token);
+      setUser(r.data.user);
+      return { ok: true };
+    }
+    return { ok: false, error: r.error };
+  }, []);
+
+  const signUpWithEmail = useCallback(async (email: string, password: string, name?: string) => {
+    const r = await api.post<{ session_token: string; user: CurrentUser }>("/auth/register", {
+      email: email.trim(),
+      password,
+      name: name?.trim() || undefined,
+    });
+    if (r.ok) {
+      await setToken(r.data.session_token);
+      setUser(r.data.user);
+      return { ok: true };
+    }
+    return { ok: false, error: r.error };
+  }, []);
+
   const signOut = useCallback(async () => {
     await api.post("/auth/logout");
     await clearToken();
@@ -120,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signInAsGuest, signOut, refresh }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signInAsGuest, signInWithEmail, signUpWithEmail, signOut, refresh }}>
       {children}
     </AuthContext.Provider>
   );

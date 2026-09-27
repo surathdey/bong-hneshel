@@ -97,6 +97,17 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            testID="login-email-button"
+            onPress={() => router.push("/email-auth")}
+            disabled={signingIn || guestLoading}
+            activeOpacity={0.85}
+            style={styles.emailBtn}
+          >
+            <Ionicons name="mail-outline" size={18} color="#fff" />
+            <Text style={styles.emailBtnText}>Continue with email</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             testID="login-guest-button"
             onPress={onGuest}
             disabled={signingIn || guestLoading}
@@ -158,6 +169,20 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   googleBtnText: { fontSize: 16, fontWeight: "700", color: "#111" },
+  emailBtn: {
+    marginTop: spacing.md,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderRadius: radius.pill,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.xl,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
+  },
+  emailBtnText: { fontSize: 15, fontWeight: "700", color: "#fff" },
   guestBtn: {
     marginTop: spacing.md,
     backgroundColor: "rgba(255,255,255,0.14)",
