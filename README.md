@@ -1,8 +1,10 @@
-# 🍛 Curry & Co.
+# 🍛 Bong Hneshel
 
-**A production-ready food-delivery platform for Bengali & Indian cloud-kitchen meals across the Greater Toronto Area.**
+**A production-ready food-delivery platform bringing authentic Bengali home cooking to the Greater Toronto Area (GTA).**
 
-One codebase. Three purpose-built apps. One backend to rule them all.
+_Home Food, Delivered._
+
+One codebase → **three purpose-built apps** (Customer, Delivery Partner, Admin) → **one FastAPI backend**.
 
 ---
 
@@ -10,112 +12,165 @@ One codebase. Three purpose-built apps. One backend to rule them all.
 
 | App | Where it lives | Who uses it |
 |-----|----------------|-------------|
-| 🛒 **Customer App** (iOS + Android + Web) | `frontend/app/(tabs)/`, `frontend/app/menu/`, `frontend/app/catering/`, `frontend/app/order/`, `frontend/app/login.tsx` | End customers ordering weekly meals & catering |
-| 🚗 **Delivery Partner App** (iOS + Android) | `frontend/app/delivery-partner.tsx`, `frontend/src/components/RouteMap.tsx`, `frontend/src/deliveryApi.ts` | Drivers running last-mile routes |
-| 🖥️ **Admin Web Portal** (Browser) | `frontend/app/admin/` | Restaurant operators managing everything |
-| ⚙️ **Backend API** | `backend/server.py` | Serves all three apps + does auth, payments, routing, orders |
+| 🛒 **Customer App** (iOS + Android + Web) | `frontend/app/(tabs)/`, `frontend/app/menu/`, `frontend/app/catering/`, `frontend/app/order/`, `frontend/app/cart.tsx`, `frontend/app/login.tsx` | Customers ordering weekly meals & catering |
+| 🚗 **Delivery Partner App** (iOS + Android) | `frontend/app/delivery-partner.tsx`, `frontend/src/components/RouteMap.tsx` | Drivers running last-mile routes |
+| 🖥️ **Admin Web Portal** (Browser only) | `frontend/app/admin/` | Restaurant operators managing everything |
+| ⚙️ **Backend API** | `backend/server.py` | Serves all three apps + auth, payments, routing, orders, AI |
 
-### 🧠 Why is it one codebase and not four?
+### 🧠 Why one codebase and not three?
 
-The frontend is a single **Expo Router** monorepo. The three mobile/web experiences are switched via the `APP_VARIANT` environment variable + file-based routing:
+The frontend is a single **Expo Router** app. The three experiences are switched via the `APP_VARIANT` environment variable + file-based routing:
 
 ```
-APP_VARIANT=customer   → Customer App loads (tabs: Home / Menu / Catering / Bag / Profile)
-APP_VARIANT=delivery   → Delivery Partner App loads (delivery-partner.tsx)
-Admin Portal           → Served via /admin/* routes on the web build
+APP_VARIANT=customer   → Customer App (tabs: Home / Menu / Catering / Orders / Profile)
+APP_VARIANT=delivery   → Delivery Partner App (delivery-partner.tsx)
+Admin Portal           → Served via /admin/* routes on the web build (any variant)
 ```
 
-This lets us **ship all three apps from one codebase**, share ~60% of the code (theme, API layer, auth, cart, components, utils), and produce **separate app-store listings** at publish time by re-building with a different `APP_VARIANT`.
-
-> Want to physically split into 4 folders (each its own project)? See the *"Splitting into 4 projects"* section at the bottom — it's a ~1-2 day refactor.
+This ships all three apps from one codebase, shares the theme, API layer, auth, cart and components, and produces **separate app-store listings** at publish time by re-building with a different `APP_VARIANT`.
 
 ---
 
 ## 📁 Repo layout
 
 ```
-Curry-Co/
-├── backend/                    # FastAPI + MongoDB backend (serves ALL three apps)
-│   ├── server.py               # Main API — ~2900 lines, auth/menu/orders/delivery/admin
-│   ├── requirements.txt        # Python deps
-│   ├── .env.example            # Sample env file (real .env is gitignored)
-│   └── tests/
+bong-hneshel/
+├── backend/                      # FastAPI + MongoDB (serves ALL three apps)
+│   ├── server.py                 # Main API — ~5850 lines (auth/menu/orders/delivery/admin/payments/AI)
+│   ├── menu_ai.py                # AI menu descriptions (GPT) + food photos (Gemini Nano Banana)
+│   ├── email_client.py           # Resend email (Emergent-managed)
+│   ├── twilio_client.py          # Twilio SMS
+│   ├── settings_crypto.py        # Fernet encryption for tenant secrets stored in DB
+│   ├── billing_client.py / platform_client.py / drive_client.py
+│   ├── build_mg_menu.py / build_weekly.py / seed_bong_products.py   # one-off menu builders
+│   ├── scripts/wipe_test_data.py # QA wipe (keeps menu + settings)
+│   ├── tests/                    # Pytest suite (backend API + feature tests)
+│   ├── web_dist/                 # Pre-built Expo web bundle shipped INSIDE the backend (prod /admin)
+│   ├── requirements.txt
+│   ├── SCHEMA.md                 # Full MongoDB schema reference
+│   └── .env                      # (gitignored) real secrets
 │
-├── frontend/                   # Expo Router monorepo (Customer + Delivery + Admin)
-│   ├── app/                    # File-based routes
-│   │   ├── (tabs)/             # 🛒 Customer bottom-tab navigator
-│   │   ├── admin/              # 🖥️ Admin Web Portal pages
-│   │   ├── menu/               # Customer weekly-package picker
-│   │   ├── catering/           # Customer catering customizer
-│   │   ├── order/              # Customer live order tracking
+├── frontend/                     # Expo Router app (Customer + Delivery + Admin)
+│   ├── app/                      # File-based routes
+│   │   ├── (tabs)/               # 🛒 Customer bottom-tab navigator
+│   │   │   ├── index.tsx         #    Home
+│   │   │   ├── menu.tsx          #    Weekly menu / à la carte / package
+│   │   │   ├── catering.tsx      #    Catering packages
+│   │   │   ├── orders.tsx        #    Order history
+│   │   │   └── profile.tsx       #    Profile + Delete Account
+│   │   ├── admin/                # 🖥️ Admin Web Portal pages (see table below)
+│   │   ├── menu/[id].tsx         # Weekly-package picker
+│   │   ├── catering/[id].tsx     # Catering customizer
+│   │   ├── order/[id].tsx        # Live order tracking
+│   │   ├── legal/privacy.tsx     # Privacy policy
+│   │   ├── cart.tsx              # Bag / checkout
 │   │   ├── delivery-partner.tsx  # 🚗 Entire Delivery Partner App
 │   │   ├── login.tsx
-│   │   └── _layout.tsx         # Variant-based routing enforcement
-│   ├── src/                    # Shared code (imported by all 3 apps)
-│   │   ├── api.ts, adminApi.ts, deliveryApi.ts
-│   │   ├── auth.tsx, cart.tsx, theme.ts
-│   │   ├── components/         # Shared UI (incl. RouteMap.tsx)
-│   │   └── utils/
-│   ├── app.config.js           # Expo config — reads APP_VARIANT to swap name/icon/bundle ID
-│   ├── package.json
-│   └── .env.example
+│   │   └── _layout.tsx           # Variant-based routing enforcement
+│   ├── src/                      # Shared code (auth, cart, theme, api clients, components, utils)
+│   ├── assets/                   # brand/, fonts/ (Ionicons.ttf for prod web), images/
+│   ├── app.config.js             # Expo config — reads APP_VARIANT to swap name/icon/bundle ID
+│   ├── brand.config.js           # Single source of truth for brand identity + colours
+│   └── .env                      # (gitignored)
 │
-├── exports/                    # Sales pitch deck (HTML + PDF)
-├── memory/                     # PRD.md — living product spec
-├── scripts/                    # e.g. switch-variant.sh — flip APP_VARIANT quickly
-├── tests/                      # High-level integration tests
-└── README.md                   # ← you are here
+├── memory/PRD.md                 # Living product spec (full changelog / waves)
+├── test_reports/                 # testing_agent iteration reports (gitignored)
+├── TENANT_ONBOARDING_PROMPT.md   # Reusable prompt to spin up a new tenant
+└── README.md                     # ← you are here
 ```
+
+---
+
+## ✨ Feature catalogue
+
+### 🛒 Customer App
+- **Google Sign-In** (Emergent-managed OAuth) **and** guest checkout — no account required to order.
+- **In-app Account Deletion** (Profile → "Delete my account" → `DELETE /api/user/me`) — cascades sessions, push tokens, saved addresses. _(Required for Apple App Store compliance.)_
+- **Weekly rotating menu** — order Sun–Thu, delivered Friday. Home hero, chef's featured, this-week grid, upcoming weeks.
+- **Two menu modes** per week (admin-toggleable):
+  - **À la carte** — pick individual dishes with clear veg / non-veg labels.
+  - **Weekly Package** — pick exactly N dishes. Supports **composition pricing** (all-veg $64.99 / mixed $69.99 / all-non-veg $79.99) or flat pricing. Live "estimated savings" chip.
+- **Complimentary items** shown when a weekly package is active (e.g. Payesh + Dal of the Week).
+- **Always Available** section — order-anytime staples (Roti, Biryani, Rolls…).
+- **Catering v2** — packages by guest count with choice groups (min/max), upgrade tiers, per-person premium add-ons, always-included items, and a custom-quote contact form.
+- **Bag / Cart** — per-item stepper, coupon input, **loyalty-points redemption**, delivery-slot picker, **Google Places address autocomplete** (Canada-restricted), saved default address (server-side for logged-in, AsyncStorage for guests).
+- **Distance-based delivery fee** (Google Distance Matrix): 0–20 km FREE, 20–40 km $5, 40–75 km $10, >75 km $15.
+- **Payment methods** (data-driven, only enabled ones render): **Stripe** hosted checkout, **PayPal**, **Cash on Delivery**, **Interac e-Transfer** (with inline email + instructions and a "send exactly $X" confirm modal). **Per-method HST** toggle.
+- **Live order tracking** — zoomable Google map (WebView/iframe), driver avatar + call button, "N stops away · ~X–Y min" smart ETA, vertical status timeline, proof-of-delivery photo.
+- **Loyalty rewards** — earn points per $1 on paid orders; redeem in increments for $ off.
+- **Coupons** — percent / fixed, min-order threshold, first-order-only (e.g. `FIRST10` = 10% off).
+
+### 🚗 Delivery Partner App
+- Separate login (JWT). Seeded demo partner "Rahul Das".
+- **Route planner** — address-autocomplete start point, one-tap **Google Directions optimization** (`waypoints:optimize`), manual ⬆⬇ stop reorder with instant recalculation, per-leg ETA + distance, tap-to-navigate deep links.
+- **Interactive zoomable Google map** with S/A/B/C markers + decoded polyline.
+- **START DELIVERY** flips orders to `on_the_way`, streams live ETA to customers, back-fills customer status timeline, tightens location heartbeat to 10 s.
+- **Journey persistence** across logout/login. Customer name on every stop.
+- **Proof-of-delivery photo** capture (camera → gallery fallback) → marks delivered → notifies owner (email + SMS).
+
+### 🖥️ Admin Web Portal (`/admin`)
+| Page | What it does |
+|------|--------------|
+| `dashboard` | Live KPIs / overview |
+| `orders` | Manage orders, status changes, one-click driver assignment, proof-of-delivery |
+| `master-menu` | Single source of truth — all dishes with AI descriptions + AI food photos |
+| `menu` | Weekly-menu builder (À la carte / Weekly Package / Complimentary / Always Available tabs, pricing modes) |
+| `catering` | Catering package configurator v2 (choice groups, tiers, premium add-ons) |
+| `coupons` | Full CRUD for discount coupons (percent/fixed, first-order-only rule) |
+| `customers` | Customer list |
+| `delivery` | Delivery-partner onboarding + order assignment (auto-polls) |
+| `settings` | Payment methods, per-method HST, tax, Twilio/notification config |
+| `billing` | Billing / platform tenant info |
+| **New Order** modal | Manually place an order on behalf of a customer (search/inline-add customer, items, delivery, payment, optional driver) |
+
+---
+
+## 🔌 Integrations
+
+| Service | Used for | Key location |
+|---|---|---|
+| **Emergent Google OAuth** | Customer sign-in (session-token pattern) | Emergent-managed |
+| **Emergent LLM** (GPT + Gemini **Nano Banana**) | AI menu descriptions + food photos | `EMERGENT_LLM_KEY` |
+| **Resend** (Emergent-managed) | Order / owner notification emails | `EMERGENT_EMAIL_KEY` |
+| **Twilio** | Order SMS notifications | credentials in DB `business_settings` |
+| **Stripe** | Hosted checkout | `STRIPE_API_KEY` |
+| **Google Maps** | Directions, Geocoding, Distance Matrix, Places Autocomplete, Static + JS maps | `GOOGLE_MAPS_API_KEY` / `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` |
+| **Emergent Push** | Push notifications (native builds only) | `EMERGENT_PUSH_KEY` (placeholder until deploy) |
+
+> ⚠️ **The Stripe key in `backend/.env` may be a LIVE key.** Any end-to-end checkout will charge real money. Swap to a test key before QA checkout flows.
 
 ---
 
 ## 🚀 Quick start (local dev)
 
-### 1. Prerequisites
-- Python 3.11+
-- Node 20+ and Yarn
-- MongoDB running locally on `mongodb://localhost:27017`
-- Google Maps API key (Directions + Geocoding enabled)
-- (Optional) Stripe test key
+### Prerequisites
+- Python 3.11+ · Node 20+ · **Yarn 1.22** (see `packageManager` in `package.json`)
+- MongoDB on `mongodb://localhost:27017`
+- Google Maps API key (Directions + Geocoding + Distance Matrix + Places enabled)
 
-### 2. Backend
-
+### Backend
 ```bash
 cd backend
-python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env       # then fill in the real keys
+# create backend/.env (see Environment variables below)
 uvicorn server:app --host 0.0.0.0 --port 8001 --reload
 ```
+All routes are prefixed with `/api/*`. Root probes: `GET /health`, `GET /healthz`.
 
-Backend serves on `http://localhost:8001` — all routes prefixed with `/api/*`.
-
-### 3. Frontend (Customer app — default)
-
+### Frontend (Customer app — default)
 ```bash
 cd frontend
 yarn install
-cp .env.example .env       # fill in EXPO_BACKEND_URL + EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
-yarn start                 # or: yarn web
+# create frontend/.env (see below)
+yarn start          # Metro dev server
 ```
 
-Metro serves on `http://localhost:3000`.
+### Switch to the Delivery Partner app
+Set `APP_VARIANT=delivery` in `frontend/.env` and restart Metro.
+_Shortcut in dev:_ a "Delivery Partner sign-in" link at the bottom of the customer login page opens the delivery flow without restarting.
 
-### 4. Switch to the Delivery Partner app
-
-Edit `frontend/.env`:
-
-```env
-APP_VARIANT=delivery
-```
-
-Restart Metro → same URL now loads the Delivery Partner UI, with a different app name & bundle ID at publish time.
-
-> **Shortcut in dev**: there's a "Delivery Partner sign-in" link at the bottom of the Customer login page so you can access the delivery flow without restarting Metro.
-
-### 5. Admin Web Portal
-
-Open `http://localhost:3000/admin` in a browser (web build only — admin isn't shipped to app stores). Log in with the seeded admin account below.
+### Admin Web Portal
+Open `/admin` in a browser (web build only — not shipped to app stores). Log in with the seeded admin account.
 
 ---
 
@@ -124,46 +179,46 @@ Open `http://localhost:3000/admin` in a browser (web build only — admin isn't 
 ### `backend/.env`
 ```env
 MONGO_URL="mongodb://localhost:27017"
-DB_NAME="curry_co_db"
-GOOGLE_MAPS_API_KEY=AIza...             # Directions + Geocoding
-STRIPE_SECRET_KEY=sk_test_...           # optional in dev
-EMERGENT_LLM_KEY=...                    # optional, for AI features
-ADMIN_EMAIL=admin@curryandco.local
-ADMIN_PASSWORD=curry@admin2026
+DB_NAME="bonghneshel_db"
+JWT_SECRET=...                    # admin/delivery JWT signing (fail-fast if unset)
+INTEGRATIONS_FERNET_KEY=...       # encrypts tenant secrets stored in DB
+ADMIN_EMAIL=admin@bong-hneshel.ca
+ADMIN_PASSWORD=...                # seeds the admin account on startup
+REVIEWER_EMAIL=reviewer@bong-hneshel.ca   # optional App Store reviewer account
+REVIEWER_PASSWORD=...
+STRIPE_API_KEY=sk_...             # ⚠️ may be LIVE
+GOOGLE_MAPS_API_KEY=AIza...
+EMERGENT_LLM_KEY=...              # AI menu descriptions + photos
+EMERGENT_EMAIL_KEY=...            # Resend (Emergent-managed)
+EMERGENT_PUSH_KEY=...             # placeholder until deploy
+EMAIL_FROM=orders@bong-hneshel.ca
+EMAIL_FROM_NAME="Bong Hneshel"
+PUBLIC_BASE_URL=...               # used in emails/invoices/tracking links
+APP_VARIANT=customer
 ```
 
 ### `frontend/.env`
 ```env
-EXPO_BACKEND_URL=http://localhost:8001
-EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=AIza... # same key, used by delivery-partner's RouteMap
-APP_VARIANT=customer                     # or "delivery"
+APP_VARIANT=customer                       # or "delivery"
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=AIza...     # used by RouteMap + tracking
+# EXPO_PACKAGER_PROXY_URL / EXPO_PACKAGER_HOSTNAME / EXPO_PUBLIC_BACKEND_URL
+# are managed by the environment — do NOT edit.
 ```
 
-Do **not** commit real `.env` files — they're gitignored.
+> Never commit real `.env` files — they're gitignored.
 
 ---
 
-## 👤 Default seeded accounts (dev only)
+## 👤 Seeded accounts
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | `admin@curryandco.local` | `curry@admin2026` |
-| Delivery Partner | `rahul.delivery@curryandco.local` | `curry@delivery2026` |
-| Customer | Guest checkout OR Google sign-in |
+| Role | Email | How it's created |
+|------|-------|------------------|
+| **Admin** | `admin@bong-hneshel.ca` | Seeded on startup from `ADMIN_EMAIL` / `ADMIN_PASSWORD` (portal `/admin`) |
+| **Reviewer** | `reviewer@bong-hneshel.ca` | Seeded on startup from `REVIEWER_EMAIL` / `REVIEWER_PASSWORD` (App Store review) |
+| **Delivery Partner** | `delivery@bong-hneshel.ca` | Seeded by `POST /api/dev/seed` (admin-gated) — "Rahul Das" |
+| **Customer** | — | Guest checkout **or** Google sign-in (no password) |
 
-Rotate these before going to production.
-
----
-
-## 🧩 Feature highlights (short version)
-
-**Customer app** — Dynamic weekly menus (Sun–Thu order, Fri–Sat delivery), à la carte + "Pick 4 for $59" package mode, catering with per-person tiers and mandatory/optional add-ons, unified Bag tab, guest checkout, Stripe + COD, live order tracking with driver ETA.
-
-**Delivery Partner app** — Interactive zoomable Google Map, one-tap route optimization via Google Directions, address-based start point (geocoding), manual ⬆⬇ stop reorder with instant recalculation, tap-to-navigate deep links, customer name on every stop, **START DELIVERY** button that flips orders to `on_the_way` and streams live ETA to customers, journey persistence across logout/login, 10 s location heartbeat during active journey.
-
-**Admin Portal** — Live dashboard, master menu (single source of truth), weekly-menu builder (with À la carte ↔ Package combo toggle), catering package configurator v2 (choice groups + upcharges), orders management with one-click driver assignment, delivery-partner onboarding, tax/settings toggles.
-
-Full feature list → see the [sales pitch deck](exports/CurryCo_Sales_Pitch.pdf) and [`memory/PRD.md`](memory/PRD.md).
+Actual dev passwords live in `memory/test_credentials.md` (kept out of the public repo). **Rotate all secrets before production.**
 
 ---
 
@@ -171,52 +226,49 @@ Full feature list → see the [sales pitch deck](exports/CurryCo_Sales_Pitch.pdf
 
 | Layer | Tech |
 |---|---|
-| Mobile & Web frontend | React Native + Expo Router (~SDK 53), TypeScript, Reanimated, react-native-webview |
+| Mobile & Web frontend | React Native **0.86.3** + Expo Router (**SDK 57**), React **19.2.3**, TypeScript, Reanimated 4, react-native-webview |
+| Icons | `@react-native-vector-icons/ionicons` (Ionicons.ttf bundled in `assets/fonts/` for prod web) |
 | Backend | FastAPI, Motor (async MongoDB), Pydantic v2 |
-| Database | MongoDB |
-| Auth | Google OAuth (Emergent-managed), JWT for delivery partners, bcrypt admin |
-| Payments | Stripe Checkout Sessions + Cash on Delivery |
-| Maps | Google Directions API (`waypoints:optimize`), Google Geocoding, Google Maps JS API (embedded via WebView/iframe) |
-| Notifications | Emergent push + email (production only) |
+| Database | MongoDB (`DB_NAME=bonghneshel_db`) |
+| Auth | Google OAuth (Emergent), JWT (admin + delivery), bcrypt password hashing |
+| Payments | Stripe Checkout · PayPal · Cash on Delivery · Interac e-Transfer |
+| Maps | Google Directions / Geocoding / Distance Matrix / Places / Maps JS (WebView + iframe) |
+| AI | Emergent LLM — GPT (descriptions) + Gemini Nano Banana (food photos) |
+| Notifications | Resend email + Twilio SMS + Emergent push |
 
 ---
 
 ## 🚢 Deployment
 
-The whole stack ships via Emergent's one-click **Publish** flow:
+Ships via Emergent's one-click **Publish** flow:
 
-1. **Publish once with `APP_VARIANT=customer`** → generates *Curry & Co.* iOS + Android + Web builds.
-2. **Publish again with `APP_VARIANT=delivery`** → generates a separate *Curry & Co. Delivery* iOS + Android build with its own bundle ID.
-3. The Admin Web Portal ships alongside the customer web build under `/admin/*`.
+1. **Publish with `APP_VARIANT=customer`** → *Bong Hneshel* iOS + Android + Web builds.
+2. **Publish again with `APP_VARIANT=delivery`** → separate *Bong Hneshel Delivery* iOS + Android build (own bundle ID).
+3. **Admin Web Portal** ships alongside the web build under `/admin/*`.
 
-Backend + MongoDB are deployed together as a single container behind the same domain.
+**Production web note:** `node_modules` is stripped in the mobile-build pipeline, so the Expo web bundle is pre-built into **`backend/web_dist/`** and served by the backend (SPA catch-all). Diagnostic: `GET /api/health/web-bundle`.
+
+Backend + MongoDB deploy together as a single container.
 
 ---
 
 ## 🧪 Testing
 
-- Integration test reports live in `test_reports/iteration_*.json` (gitignored).
-- Manual smoke tests live in `test_result.md`.
-- All screens have `testID` props for Playwright/Detox automation.
+- **Backend API suite:** `cd backend && python -m pytest tests/api` (or `./run_api_tests.sh`). Feature suites live in `backend/tests/` (payments, journey backfill, weekly enhancements, manual order, etc.).
+- **Integration reports:** `test_reports/iteration_*.json` (gitignored).
+- **Manual smoke notes:** `test_result.md`.
+- All screens expose `testID` props for Playwright/Detox automation.
 
 ---
 
-## ✂️ Splitting into 4 projects (advanced — not recommended today)
+## 🔁 Rebranding to a new tenant
 
-If you truly need Customer / Delivery / Admin as three independent Expo projects, plan for:
-
-1. `yarn create expo customer-app`, `delivery-app`, `admin-portal` — three fresh projects.
-2. Extract `frontend/src/*` into a shared workspace (Yarn workspaces or npm workspaces) — e.g. `packages/shared` with theme, API clients, auth, utils, components.
-3. Move each set of routes from `frontend/app/*` into its respective project's `app/` folder.
-4. Duplicate `metro.config.js`, `app.json`, `package.json`, `.env` — one per project.
-5. Set up 3 separate CI pipelines (or one monorepo pipeline via Turbo/Nx).
-
-**Effort: 1-2 days of refactor.** Ask if you'd like this broken out into a proper migration plan.
+This app is multi-tenant-friendly. To spin up a new brand, edit **`brand.json`** + **`frontend/brand.config.js`** (identity, colours, contact, region, native bundle IDs) — never hand-edit hardcoded strings. See **`TENANT_ONBOARDING_PROMPT.md`** for a step-by-step reusable prompt.
 
 ---
 
 ## 📄 License & contact
 
-Private / commercial. Contact **admin@curryandco.local** or open an issue.
+Private / commercial. Contact **support@bong-hneshel.ca**.
 
 Made with 🌶️ in the GTA.

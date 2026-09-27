@@ -299,3 +299,8 @@ Fixed 4 findings from the security audit (all verified):
 - Refactor: moved `_current_admin` definition up (after `_current_user`) so earlier endpoints can depend on it.
 - NOT fixed (env, per user): SEC-005 LIVE Stripe key + plaintext admin creds in .env — user chose to keep LIVE key.
 Verified via curl: 3 endpoints return 401 unauth / 200 with admin token; admin/coupons regression 200; invoice+track return 200.
+
+---
+## README overhaul (2026-06)
+- Rewrote stale `/app/README.md` (was branded "Curry & Co.", SDK 53, wrong DB/env names). Now fully documents Bong Hneshel: three-app architecture, full feature catalogue (customer/delivery/admin), all integrations, correct env vars (DB_NAME=bonghneshel_db, STRIPE_API_KEY, EMERGENT_* keys, REVIEWER_*), SDK 57 / RN 0.86.3 stack, seeded accounts, prod web_dist serving, pytest suite, rebranding pointer. Docs-only change; no code touched.
+- Also supplied Apple 2.1 review-notes copy (purpose/audience/problem/value) for App Store Connect.
