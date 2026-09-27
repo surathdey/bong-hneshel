@@ -560,6 +560,15 @@ export default function CartScreen() {
                   const avail = user?.loyalty_points || 0;
                   const maxRedeemable = Math.floor(avail / redeemStep) * redeemStep;
                   return (
+                    <>
+                    {!user?.phone && (
+                      <View style={styles.loyaltyGate} testID="cart-loyalty-gate">
+                        <Ionicons name="gift-outline" size={16} color={colors.secondary} />
+                        <Text style={styles.loyaltyGateText}>
+                          Add your mobile number above to start earning loyalty points on this order.
+                        </Text>
+                      </View>
+                    )}
                     <View style={styles.pointsBlock} testID="cart-loyalty-block">
                       <View style={styles.pointsRow}>
                         <View style={{ flex: 1 }}>
@@ -586,6 +595,7 @@ export default function CartScreen() {
                         <Text style={styles.pointsSub}>Earn {redeemStep} points to unlock $1 off — keep ordering!</Text>
                       )}
                     </View>
+                    </>
                   );
                 })()}
               </View>
@@ -763,6 +773,8 @@ const styles = StyleSheet.create({
   pointsMax: { color: colors.primary, fontSize: 12, fontWeight: "700", marginTop: spacing.sm },
   loyaltyPrompt: { marginTop: spacing.sm, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingVertical: spacing.md, paddingHorizontal: spacing.md },
   loyaltyPromptText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: "600" },
+  loyaltyGate: { marginTop: spacing.sm, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.chipBg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.secondary, paddingVertical: spacing.md, paddingHorizontal: spacing.md },
+  loyaltyGateText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: "600" },
 
   summaryBox: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border },
   feeHint: { fontSize: 11, color: colors.textMuted, marginTop: -4, marginBottom: 2 },

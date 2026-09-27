@@ -684,6 +684,7 @@ async def create_session(req: SessionInReq):
             picture=picture,
         )
         await db.users.insert_one(user.model_dump())
+        asyncio.create_task(_send_welcome_email(user.model_dump()))
 
     session_doc = {
         "session_token": data["session_token"],
@@ -777,6 +778,7 @@ async def register_with_email(req: EmailRegisterReq):
     doc["password_hash"] = _pwd.hash(req.password)
     doc["provider"] = "password"
     await db.users.insert_one(doc)
+    asyncio.create_task(_send_welcome_email(doc))
     token = await _issue_customer_session(user.user_id)
     return {"session_token": token, "user": user.model_dump()}
 
@@ -867,6 +869,40 @@ async def reset_password(req: ResetPasswordReq):
     return {"ok": True, "message": "Password updated. You can now sign in."}
 
 
+async def _send_welcome_email(user_doc: dict):
+    """Best-effort welcome email to a brand-new customer, including the active
+    first-order coupon (from Admin → Coupons) if one is configured."""
+    try:
+        email = (user_doc.get("email") or "").strip()
+        # Skip guest placeholder emails.
+        if not email or email.endswith(BRAND_GUEST_DOMAIN):
+            return
+        name = user_doc.get("name") or "there"
+        coupon = await db.coupons.find_one({"first_time_only": True, "active": True}, {"_id": 0})
+        offer_html = ""
+        if coupon:
+            code = _html.escape(str(coupon.get("code", "")))
+            if coupon.get("discount_type") == "percent":
+                amt = f"{int(coupon.get('value', 0))}% off"
+            else:
+                amt = f"${int(coupon.get('value', 0)) / 100:.2f} off"
+            offer_html = (
+                "<p>Here's a treat to get you started — use code "
+                f"<strong>{code}</strong> for <strong>{amt}</strong> your first order.</p>"
+            )
+        html_body = (
+            f"<p>Hi {_html.escape(str(name))},</p>"
+            f"<p>Welcome to {_html.escape(BRAND_NAME)}! We're so glad you're here — authentic "
+            "Bengali home cooking, made fresh each week and delivered across the Greater Toronto Area.</p>"
+            f"{offer_html}"
+            "<p>Browse this week's menu in the app and order by Thursday for fresh Friday delivery.</p>"
+            f"<p>Warmly,<br/>The {_html.escape(BRAND_NAME)} team</p>"
+        )
+        await _email.send_email(to=email, subject=f"Welcome to {BRAND_NAME}!", html=html_body)
+    except Exception as e:
+        log.warning(f"welcome email failed: {e}")
+
+
 # --------------------------------------------------------------
 # Account deletion — required for App Store & Play Store review.
 # Hard-deletes profile + sessions; anonymises past orders (kept for
@@ -921,6 +957,27 @@ async def save_default_address(req: SavedAddressReq, user: User = Depends(_curre
 async def clear_default_address(user: User = Depends(_current_user)):
     await db.users.update_one({"user_id": user.user_id}, {"$unset": {"default_address": ""}})
     return {"ok": True}
+
+
+class ProfileUpdateReq(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+
+
+@api.post("/me/profile")
+async def update_my_profile(req: ProfileUpdateReq, user: User = Depends(_current_user)):
+    """Update the customer's own name and/or mobile number (e.g. from the Profile screen)."""
+    updates: dict = {}
+    if req.name is not None:
+        n = req.name.strip()
+        if n:
+            updates["name"] = n
+    if req.phone is not None:
+        updates["phone"] = req.phone.strip() or None
+    if updates:
+        await db.users.update_one({"user_id": user.user_id}, {"$set": updates})
+    fresh = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    return {"ok": True, "user": User(**fresh).model_dump()}
 
 
 # ==========================================================

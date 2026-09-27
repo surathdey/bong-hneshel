@@ -313,3 +313,11 @@ Added email/password login to the customer login screen (previously Google + gue
 - **This activates the seeded reviewer account** (`reviewer@bong-hneshel.ca`) which previously had a password_hash but no login route — fixes Apple's "provide working demo credentials" request.
 - Frontend: `src/auth.tsx` gained `signInWithEmail`/`signUpWithEmail`; new screen `app/email-auth.tsx` (login/signup/forgot/reset modes); `app/login.tsx` "Continue with email" button; route registered in `app/_layout.tsx`.
 - Verified: testing_agent iteration_8 — backend 16/16 + all frontend flows incl. reviewer login. Tests: `backend/tests/test_email_auth_iter8.py`.
+
+---
+## Signup phone + Add-phone-later + Welcome email + Loyalty gate (2026-06)
+- **Optional phone on email signup**: `EmailRegisterReq.phone`; `/auth/register` stores it. Frontend `email-auth.tsx` signup form has an optional "Mobile number *optional" field + loyalty hint.
+- **Add phone later (Profile)**: new `POST /api/me/profile` (auth) updates name/phone. `profile.tsx` gained a "Your details → Mobile number" row (Add/Edit) opening a bottom-sheet modal; saves then `refresh()`.
+- **Welcome email (all new customers)**: `_send_welcome_email(user_doc)` helper fired via `asyncio.create_task` from BOTH `/auth/register` and `/auth/session` new-user branch. Best-effort (never blocks/errors signup). Dynamically includes the ACTIVE first_time_only coupon from Admin→Coupons if one exists; otherwise omits the offer line. Skips guest placeholder emails. NOTE: no first-order coupon exists in DB yet — owner must create one in Admin → Coupons (first-order-only) for it to appear in the email.
+- **Loyalty gate (cart)**: `cart-loyalty-gate` nudge shown to logged-in members with no phone, inviting them to add one to earn points.
+- Verified: testing_agent iteration_9 — backend 8/8 pytest + all frontend flows. Tests: `backend/tests/test_profile_welcome_iter9.py`. Minor non-blocking UX note: profile modal Save can sit below fold on small screens.

@@ -1,6 +1,7 @@
 import React from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Platform,
+  Modal, TextInput, KeyboardAvoidingView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@react-native-vector-icons/ionicons";
@@ -27,8 +28,7 @@ export default function ProfileTab() {
     });
   })(); }, []);
 
-  const enablePush = async () => {
-    if (Platform.OS === "web") { Alert.alert("Not available", "Push works on device builds only."); return; }
+  const enablePush = async () => {    if (Platform.OS === "web") { Alert.alert("Not available", "Push works on device builds only."); return; }
     try {
       const { status } = await Notifications.requestPermissionsAsync();
       if (status !== "granted") { Alert.alert("Permission required", "Please enable notifications in Settings."); return; }
@@ -48,6 +48,32 @@ export default function ProfileTab() {
     await clearCart();
     await signOut();
     router.replace("/login");
+  };
+
+  const [editVisible, setEditVisible] = React.useState(false);
+  const [nameInput, setNameInput] = React.useState("");
+  const [phoneInput, setPhoneInput] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+
+  const openEdit = () => {
+    setNameInput(user?.name || "");
+    setPhoneInput(user?.phone || "");
+    setEditVisible(true);
+  };
+
+  const saveProfile = async () => {
+    setSaving(true);
+    try {
+      const r = await api.post("/me/profile", { name: nameInput, phone: phoneInput });
+      if (r.ok) {
+        await refresh();
+        setEditVisible(false);
+      } else {
+        Alert.alert("Could not save", (r as any).error || "Please try again.");
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const doDeleteAccount = async () => {
@@ -126,6 +152,22 @@ export default function ProfileTab() {
         </View>
         )}
 
+        {user.role !== "guest" && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your details</Text>
+          <TouchableOpacity testID="profile-edit-phone" style={styles.linkRow} onPress={openEdit}>
+            <Ionicons name="call-outline" size={20} color={colors.text} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.linkText}>Mobile number</Text>
+              <Text style={styles.linkSub}>
+                {user.phone ? user.phone : "Add your number to earn & redeem loyalty points"}
+              </Text>
+            </View>
+            <Text style={styles.editLabel}>{user.phone ? "Edit" : "Add"}</Text>
+          </TouchableOpacity>
+        </View>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Preferences</Text>
           <TouchableOpacity testID="profile-enable-push" style={styles.linkRow} onPress={enablePush}>
@@ -171,6 +213,44 @@ export default function ProfileTab() {
           </Text>
         </View>
       </ScrollView>
+
+      <Modal visible={editVisible} transparent animationType="slide" onRequestClose={() => setEditVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalRoot}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setEditVisible(false)} />
+          <View style={styles.modalCard} testID="profile-edit-modal">
+            <Text style={styles.modalTitle}>Edit your details</Text>
+            <Text style={styles.modalLabel}>Name</Text>
+            <TextInput
+              testID="profile-edit-name-input"
+              value={nameInput}
+              onChangeText={setNameInput}
+              placeholder="Your name"
+              placeholderTextColor={colors.textMuted}
+              style={styles.modalInput}
+              autoCapitalize="words"
+            />
+            <Text style={styles.modalLabel}>Mobile number</Text>
+            <TextInput
+              testID="profile-edit-phone-input"
+              value={phoneInput}
+              onChangeText={setPhoneInput}
+              placeholder="+1 (416) 555-0100"
+              placeholderTextColor={colors.textMuted}
+              style={styles.modalInput}
+              keyboardType="phone-pad"
+            />
+            <Text style={styles.modalHint}>
+              Adding your mobile number makes you eligible to earn loyalty points and redeem them on future orders.
+            </Text>
+            <TouchableOpacity testID="profile-edit-save" style={[styles.saveBtn, saving && { opacity: 0.7 }]} onPress={saveProfile} disabled={saving}>
+              <Text style={styles.saveBtnText}>{saving ? "Saving…" : "Save"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setEditVisible(false)} style={styles.cancelBtn}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -195,6 +275,24 @@ const styles = StyleSheet.create({
   linkRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surface, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
   linkText: { flex: 1, fontSize: 14, fontWeight: "600", color: colors.text },
   linkSub: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+  editLabel: { fontSize: 13, fontWeight: "800", color: colors.primary },
+  modalRoot: { flex: 1, justifyContent: "flex-end" },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.overlay },
+  modalCard: {
+    backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
+    padding: spacing.xl, gap: spacing.xs,
+  },
+  modalTitle: { fontSize: 20, fontWeight: "800", color: colors.text, marginBottom: spacing.sm },
+  modalLabel: { fontSize: 13, fontWeight: "700", color: colors.text, marginTop: spacing.sm, marginBottom: 4 },
+  modalInput: {
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md,
+    paddingHorizontal: spacing.lg, paddingVertical: 12, fontSize: 16, color: colors.text,
+  },
+  modalHint: { fontSize: 12, color: colors.textMuted, marginTop: spacing.sm, lineHeight: 17 },
+  saveBtn: { backgroundColor: colors.primary, borderRadius: radius.pill, paddingVertical: 15, alignItems: "center", marginTop: spacing.lg },
+  saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  cancelBtn: { alignItems: "center", paddingVertical: spacing.md },
+  cancelBtnText: { color: colors.textMuted, fontSize: 14, fontWeight: "700" },
   signOutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: spacing.md, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.danger, backgroundColor: colors.surface },
   signOutText: { color: colors.danger, fontWeight: "700" },
   deleteAccountBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, padding: spacing.sm, borderRadius: radius.pill, backgroundColor: "transparent" },
