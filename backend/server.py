@@ -543,6 +543,7 @@ class Order(BaseModel):
     tax_cents: int = 0
     tax_label: str = "HST"
     discount_cents: int
+    referral_discount_cents: int = 0
     points_redeemed_cents: int
     total_cents: int
     coupon_code: Optional[str] = None
@@ -1958,10 +1959,11 @@ async def order_quote(req: QuoteOrderReq, user: User = Depends(_current_user)):
     snaps, subtotal = await _resolve_items(req.items)
     settings = await _get_settings()
     discount, coupon = await _apply_coupon(req.coupon_code, subtotal, user)
-    discount = min(subtotal, discount + await _referral_discount(user, subtotal, settings))
-    _pts_used, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - discount))
+    referral_discount = max(0, min(await _referral_discount(user, subtotal, settings), subtotal - discount))
+    total_discount = discount + referral_discount
+    _pts_used, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - total_discount))
     delivery_fee, dist_km, fee_tier = await compute_delivery_fee(req.address, settings)
-    taxable = max(0, subtotal + delivery_fee - discount - points_redeem_cents)
+    taxable = max(0, subtotal + delivery_fee - total_discount - points_redeem_cents)
     tax_on = _tax_enabled_for_method(settings, req.payment_method)
     tax_cents = (taxable * settings.get("tax_rate_bps", 1300)) // 10000 if tax_on else 0
     total = taxable + tax_cents
@@ -1976,6 +1978,7 @@ async def order_quote(req: QuoteOrderReq, user: User = Depends(_current_user)):
         "tax_label": settings.get("tax_label", "HST"),
         "tax_enabled": tax_on,
         "discount_cents": discount,
+        "referral_discount_cents": referral_discount,
         "points_redeemed_cents": points_redeem_cents,
         "total_cents": total,
         "coupon_code": coupon,
@@ -2002,10 +2005,11 @@ async def create_order(req: CreateOrderReq, request: Request, user: User = Depen
     snaps, subtotal = await _resolve_items(req.items)
     settings = await _get_settings()
     discount, coupon_code = await _apply_coupon(req.coupon_code, subtotal, user)
-    discount = min(subtotal, discount + await _referral_discount(user, subtotal, settings))
-    points_redeem, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - discount))
+    referral_discount = max(0, min(await _referral_discount(user, subtotal, settings), subtotal - discount))
+    total_discount = discount + referral_discount
+    points_redeem, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - total_discount))
     delivery_fee, dist_km, fee_tier = await compute_delivery_fee(req.address, settings)
-    taxable = max(0, subtotal + delivery_fee - discount - points_redeem_cents)
+    taxable = max(0, subtotal + delivery_fee - total_discount - points_redeem_cents)
     tax_cents = (taxable * settings.get("tax_rate_bps", 1300)) // 10000 if _tax_enabled_for_method(settings, req.payment_method) else 0
     total = taxable + tax_cents
 
@@ -2039,6 +2043,7 @@ async def create_order(req: CreateOrderReq, request: Request, user: User = Depen
         tax_cents=tax_cents,
         tax_label=settings.get("tax_label", "HST"),
         discount_cents=discount,
+        referral_discount_cents=referral_discount,
         points_redeemed_cents=points_redeem_cents,
         total_cents=total,
         coupon_code=coupon_code,
