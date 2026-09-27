@@ -84,7 +84,12 @@ bong-hneshel/
 ## ✨ Feature catalogue
 
 ### 🛒 Customer App
-- **Google Sign-In** (Emergent-managed OAuth) **and** guest checkout — no account required to order.
+- **Sign-in options:** Google (Emergent-managed OAuth), **email + password** (sign up / sign in), and guest checkout — no account required to order.
+- **Email sign-up** collects an **optional mobile number** (unlocks loyalty eligibility) and derives a display name.
+- **Forgot / reset password** — emails a single-use **6-digit code** (valid 15 min, max 5 attempts) via Resend; resetting invalidates all existing sessions.
+- **Welcome email** — every new customer (email **and** Google) automatically receives a welcome email, which includes the active **first-order coupon** from Admin → Coupons when one is configured.
+- **Manage profile** — customers can add or edit their name and mobile number anytime from the Profile screen (`POST /api/me/profile`).
+- **Loyalty gate** — logged-in members without a phone number see a gentle checkout nudge to add one and start earning points.
 - **In-app Account Deletion** (Profile → "Delete my account" → `DELETE /api/user/me`) — cascades sessions, push tokens, saved addresses. _(Required for Apple App Store compliance.)_
 - **Weekly rotating menu** — order Sun–Thu, delivered Friday. Home hero, chef's featured, this-week grid, upcoming weeks.
 - **Two menu modes** per week (admin-toggleable):
@@ -230,7 +235,7 @@ Actual dev passwords live in `memory/test_credentials.md` (kept out of the publi
 | Icons | `@react-native-vector-icons/ionicons` (Ionicons.ttf bundled in `assets/fonts/` for prod web) |
 | Backend | FastAPI, Motor (async MongoDB), Pydantic v2 |
 | Database | MongoDB (`DB_NAME=bonghneshel_db`) |
-| Auth | Google OAuth (Emergent), JWT (admin + delivery), bcrypt password hashing |
+| Auth | Customer: Google OAuth (Emergent) + email/password + guest, all issuing one opaque session token; JWT for admin + delivery; bcrypt password hashing; 6-digit email password reset |
 | Payments | Stripe Checkout · PayPal · Cash on Delivery · Interac e-Transfer |
 | Maps | Google Directions / Geocoding / Distance Matrix / Places / Maps JS (WebView + iframe) |
 | AI | Emergent LLM — GPT (descriptions) + Gemini Nano Banana (food photos) |
