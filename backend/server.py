@@ -218,6 +218,8 @@ class User(BaseModel):
     phone: Optional[str] = None
     default_address: Optional[dict] = None
     loyalty_points: int = 0
+    referral_code: Optional[str] = None   # this user's own invite code
+    referred_by: Optional[str] = None     # user_id of whoever invited them
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     role: str = "customer"  # customer | admin | delivery_partner
 
@@ -382,6 +384,14 @@ class BusinessSettings(BaseModel):
     loyalty_enabled: bool = True
     loyalty_earn_points_per_dollar: int = 1
     loyalty_redeem_points_per_dollar: int = 100
+    # ----- Referral / invite program -----
+    # Referrer earns `referral_reward_points` loyalty points once their invited
+    # friend completes their FIRST paid order. The friend gets a discount on
+    # that first order (percent or fixed cents).
+    referral_enabled: bool = True
+    referral_reward_points: int = 100
+    referral_friend_discount_type: str = "percent"   # "percent" | "fixed"
+    referral_friend_discount_value: int = 10          # percent (0-100) OR cents
     # Per-payment-method configuration.
     # Card (Stripe) shows Apple Pay / Google Pay / cards on the hosted page.
     payment_methods: Dict[str, PaymentMethodConfig] = Field(default_factory=lambda: {
@@ -747,6 +757,7 @@ class EmailRegisterReq(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     name: Optional[str] = None
     phone: Optional[str] = None
+    referral_code: Optional[str] = None
 
 
 class EmailLoginReq(BaseModel):
@@ -778,6 +789,11 @@ async def register_with_email(req: EmailRegisterReq):
     doc["password_hash"] = _pwd.hash(req.password)
     doc["provider"] = "password"
     await db.users.insert_one(doc)
+    if req.referral_code:
+        try:
+            await _link_referral(user.user_id, req.referral_code)
+        except Exception as e:
+            log.warning(f"referral link failed: {e}")
     asyncio.create_task(_send_welcome_email(doc))
     token = await _issue_customer_session(user.user_id)
     return {"session_token": token, "user": user.model_dump()}
@@ -1344,6 +1360,201 @@ async def coupon_lookup(code: str):
 
 
 # ==========================================================
+# REFERRALS / INVITE
+# ==========================================================
+def _gen_referral_code() -> str:
+    # 6-char uppercase, no ambiguous chars (0/O, 1/I).
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return "".join(_secrets.choice(alphabet) for _ in range(6))
+
+
+async def _get_or_create_referral_code(user_id: str) -> Optional[str]:
+    udoc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "referral_code": 1, "role": 1})
+    if not udoc or udoc.get("role") == "guest":
+        return None
+    if udoc.get("referral_code"):
+        return udoc["referral_code"]
+    for _ in range(12):
+        cand = _gen_referral_code()
+        if not await db.users.find_one({"referral_code": cand}, {"_id": 1}):
+            await db.users.update_one({"user_id": user_id}, {"$set": {"referral_code": cand}})
+            return cand
+    return None
+
+
+async def _link_referral(invitee_id: str, code: Optional[str]) -> dict:
+    """Attach a referral code to a brand-new customer (before their first order)."""
+    code = (code or "").strip().upper()
+    if not code:
+        return {"ok": False, "reason": "empty"}
+    invitee = await db.users.find_one({"user_id": invitee_id}, {"_id": 0})
+    if not invitee or invitee.get("role") == "guest":
+        return {"ok": False, "reason": "not_eligible"}
+    if invitee.get("referred_by"):
+        return {"ok": False, "reason": "already_referred"}
+    referrer = await db.users.find_one({"referral_code": code}, {"_id": 0, "user_id": 1})
+    if not referrer or referrer["user_id"] == invitee_id:
+        return {"ok": False, "reason": "invalid_code"}
+    prior = await db.orders.count_documents({"user_id": invitee_id, "status": {"$ne": "cancelled"}})
+    if prior > 0:
+        return {"ok": False, "reason": "already_ordered"}
+    now = datetime.now(timezone.utc)
+    await db.users.update_one(
+        {"user_id": invitee_id},
+        {"$set": {"referred_by": referrer["user_id"], "referral_code_used": code}},
+    )
+    await db.referrals.update_one(
+        {"invitee_id": invitee_id},
+        {"$set": {"referrer_id": referrer["user_id"], "invitee_id": invitee_id,
+                  "code": code, "status": "pending", "created_at": now}},
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+async def _referral_discount(user, subtotal: int, settings: dict) -> int:
+    """Friend's first-order discount for a referred customer (0 if not applicable)."""
+    if getattr(user, "role", "customer") == "guest":
+        return 0
+    if not settings.get("referral_enabled", True):
+        return 0
+    udoc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0, "referred_by": 1})
+    if not udoc or not udoc.get("referred_by"):
+        return 0
+    prior = await db.orders.count_documents({"user_id": user.user_id, "status": {"$ne": "cancelled"}})
+    if prior > 0:
+        return 0
+    dtype = settings.get("referral_friend_discount_type", "percent")
+    val = int(settings.get("referral_friend_discount_value", 0) or 0)
+    if val <= 0:
+        return 0
+    return subtotal * val // 100 if dtype == "percent" else min(val, subtotal)
+
+
+async def _maybe_reward_referral(invitee_id: str, order_id: str):
+    """Credit the referrer once their invited friend's first order is paid. Idempotent."""
+    try:
+        invitee = await db.users.find_one(
+            {"user_id": invitee_id}, {"_id": 0, "referred_by": 1, "referral_rewarded": 1, "name": 1})
+        if not invitee or not invitee.get("referred_by") or invitee.get("referral_rewarded"):
+            return
+        settings = await _get_settings()
+        if not settings.get("referral_enabled", True):
+            return
+        points = int(settings.get("referral_reward_points", 0) or 0)
+        if points <= 0:
+            return
+        referrer_id = invitee["referred_by"]
+        # Atomically claim the reward so concurrent order events can't double-pay.
+        claim = await db.users.update_one(
+            {"user_id": invitee_id, "referral_rewarded": {"$ne": True}},
+            {"$set": {"referral_rewarded": True, "referral_rewarded_at": datetime.now(timezone.utc)}},
+        )
+        if claim.modified_count == 0:
+            return
+        updated = await db.users.find_one_and_update(
+            {"user_id": referrer_id}, {"$inc": {"loyalty_points": points}}, return_document=True)
+        if updated is None:
+            return  # referrer no longer exists
+        bal = int(updated.get("loyalty_points", 0))
+        now = datetime.now(timezone.utc)
+        await db.referrals.update_one(
+            {"invitee_id": invitee_id},
+            {"$set": {"status": "rewarded", "rewarded_at": now,
+                      "points_awarded": points, "reward_order_id": order_id}},
+            upsert=True,
+        )
+        await db.loyalty_ledger.insert_one({
+            "entry_id": f"ll_{uuid.uuid4().hex[:10]}", "user_id": referrer_id,
+            "order_id": order_id, "type": "referral", "points": points,
+            "balance_after": bal, "created_at": now,
+            "note": f"Referral bonus — {invitee.get('name') or 'a friend'}'s first order",
+        })
+        # Best-effort notify the referrer.
+        try:
+            await send_push(
+                recipients=[referrer_id],
+                data={"title": "You earned a referral bonus! 🎁",
+                      "message": f"Your friend placed their first {BRAND_NAME} order — you earned {points} points.",
+                      "action_url": "/(tabs)/profile"},
+            )
+        except Exception:
+            pass
+        try:
+            ref_doc = await db.users.find_one({"user_id": referrer_id}, {"_id": 0, "email": 1, "name": 1})
+            if ref_doc and ref_doc.get("email") and not ref_doc["email"].endswith(BRAND_GUEST_DOMAIN):
+                html_body = (
+                    f"<p>Hi {_html.escape(ref_doc.get('name') or 'there')},</p>"
+                    f"<p>Great news — a friend you invited just placed their first {_html.escape(BRAND_NAME)} order, "
+                    f"so we've added <strong>{points} loyalty points</strong> to your account. Thank you for spreading the word!</p>"
+                    f"<p>Warmly,<br/>The {_html.escape(BRAND_NAME)} team</p>"
+                )
+                await _email.send_email(to=ref_doc["email"],
+                                        subject=f"You earned {points} points on {BRAND_NAME}!", html=html_body)
+        except Exception as e:
+            log.warning(f"referral email failed: {e}")
+    except Exception as e:
+        log.warning(f"referral reward failed: {e}")
+
+
+class ReferralRedeemReq(BaseModel):
+    code: str
+
+
+@api.get("/referrals/me")
+async def my_referral(user: User = Depends(_current_user)):
+    """Return this customer's invite code + reward config + stats."""
+    if getattr(user, "role", "customer") == "guest":
+        raise HTTPException(403, "Sign in to get your invite code")
+    code = await _get_or_create_referral_code(user.user_id)
+    settings = await _get_settings()
+    dtype = settings.get("referral_friend_discount_type", "percent")
+    dval = int(settings.get("referral_friend_discount_value", 0) or 0)
+    friend_label = f"{dval}% off" if dtype == "percent" else f"${dval / 100:.2f} off"
+    invited = await db.referrals.count_documents({"referrer_id": user.user_id})
+    rewarded = await db.referrals.count_documents({"referrer_id": user.user_id, "status": "rewarded"})
+    reward_points = int(settings.get("referral_reward_points", 0) or 0)
+    # Has this user themselves been referred and is still eligible to redeem?
+    udoc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0, "referred_by": 1})
+    prior_orders = await db.orders.count_documents({"user_id": user.user_id, "status": {"$ne": "cancelled"}})
+    return {
+        "code": code,
+        "enabled": bool(settings.get("referral_enabled", True)),
+        "reward_points": reward_points,
+        "friend_discount_type": dtype,
+        "friend_discount_value": dval,
+        "friend_discount_label": friend_label,
+        "invited_count": invited,
+        "rewarded_count": rewarded,
+        "points_earned": rewarded * reward_points,
+        "can_redeem": bool(not (udoc or {}).get("referred_by") and prior_orders == 0),
+    }
+
+
+@api.post("/referrals/redeem")
+async def redeem_referral(req: ReferralRedeemReq, user: User = Depends(_current_user)):
+    """Apply a friend's referral code to your account (before your first order)."""
+    if getattr(user, "role", "customer") == "guest":
+        raise HTTPException(403, "Sign in to use a referral code")
+    res = await _link_referral(user.user_id, req.code)
+    if not res.get("ok"):
+        reason = res.get("reason")
+        msg = {
+            "invalid_code": "That referral code isn't valid.",
+            "already_referred": "You've already used a referral code.",
+            "already_ordered": "Referral codes only apply before your first order.",
+            "not_eligible": "This account can't use a referral code.",
+            "empty": "Please enter a referral code.",
+        }.get(reason, "Could not apply that code.")
+        raise HTTPException(400, msg)
+    settings = await _get_settings()
+    dtype = settings.get("referral_friend_discount_type", "percent")
+    dval = int(settings.get("referral_friend_discount_value", 0) or 0)
+    label = f"{dval}% off" if dtype == "percent" else f"${dval / 100:.2f} off"
+    return {"ok": True, "friend_discount_label": label}
+
+
+# ==========================================================
 # ORDERS
 # ==========================================================
 DELIVERY_FEE_CENTS = 599  # $5.99 default GTA delivery fee
@@ -1747,6 +1958,7 @@ async def order_quote(req: QuoteOrderReq, user: User = Depends(_current_user)):
     snaps, subtotal = await _resolve_items(req.items)
     settings = await _get_settings()
     discount, coupon = await _apply_coupon(req.coupon_code, subtotal, user)
+    discount = min(subtotal, discount + await _referral_discount(user, subtotal, settings))
     _pts_used, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - discount))
     delivery_fee, dist_km, fee_tier = await compute_delivery_fee(req.address, settings)
     taxable = max(0, subtotal + delivery_fee - discount - points_redeem_cents)
@@ -1790,6 +2002,7 @@ async def create_order(req: CreateOrderReq, request: Request, user: User = Depen
     snaps, subtotal = await _resolve_items(req.items)
     settings = await _get_settings()
     discount, coupon_code = await _apply_coupon(req.coupon_code, subtotal, user)
+    discount = min(subtotal, discount + await _referral_discount(user, subtotal, settings))
     points_redeem, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - discount))
     delivery_fee, dist_km, fee_tier = await compute_delivery_fee(req.address, settings)
     taxable = max(0, subtotal + delivery_fee - discount - points_redeem_cents)
@@ -1890,6 +2103,7 @@ async def create_order(req: CreateOrderReq, request: Request, user: User = Depen
             await _record_loyalty(user.user_id, order.order_id, points_awarded, points_redeem, bal)
         except Exception as e:
             log.warning(f"loyalty ledger fail: {e}")
+        await _maybe_reward_referral(user.user_id, order.order_id)
         try:
             pay_line = (
                 f"Pay CA${total/100:.2f} at delivery." if payment_method == "cod"
@@ -2094,6 +2308,7 @@ async def _finalize_paid_card_order(order: dict, session: dict | None = None):
         await _record_loyalty(fresh["user_id"], fresh["order_id"], points_awarded, points_redeemed, bal)
     except Exception as e:
         log.warning(f"card points fail: {e}")
+    await _maybe_reward_referral(fresh["user_id"], fresh["order_id"])
     try:
         settings = await _get_settings()
         u = await db.users.find_one({"user_id": fresh["user_id"]}, {"_id": 0}) or {}
@@ -3043,6 +3258,10 @@ async def public_settings():
         "loyalty_enabled": bool(s.get("loyalty_enabled", True)),
         "loyalty_earn_points_per_dollar": int(s.get("loyalty_earn_points_per_dollar", 1) or 0),
         "loyalty_redeem_points_per_dollar": int(s.get("loyalty_redeem_points_per_dollar", 100) or 100),
+        "referral_enabled": bool(s.get("referral_enabled", True)),
+        "referral_reward_points": int(s.get("referral_reward_points", 0) or 0),
+        "referral_friend_discount_type": s.get("referral_friend_discount_type", "percent"),
+        "referral_friend_discount_value": int(s.get("referral_friend_discount_value", 0) or 0),
         "home_hero_tagline": s.get("home_hero_tagline", "Order anytime this week — we deliver every weekend."),
         # Expose ONLY safe payment-method fields (never secret keys) so the customer app
         # can render the right method list, apply per-method tax, and show Interac email.
@@ -5998,6 +6217,16 @@ async def _startup():
         await db.weekly_menus.create_index("week_start", unique=True)
         await db.orders.create_index("order_id", unique=True)
         await db.orders.create_index("user_id")
+        try:
+            await db.users.drop_index("referral_code_1")
+        except Exception:
+            pass
+        await db.users.create_index(
+            "referral_code", unique=True,
+            partialFilterExpression={"referral_code": {"$type": "string"}},
+        )
+        await db.referrals.create_index("invitee_id", unique=True)
+        await db.referrals.create_index("referrer_id")
         await db.payment_transactions.create_index("session_id", unique=True)
         await db.catering_packages.create_index("package_id", unique=True)
         await db.admins.create_index("email", unique=True)

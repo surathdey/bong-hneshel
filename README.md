@@ -90,6 +90,7 @@ bong-hneshel/
 - **Welcome email** — every new customer (email **and** Google) automatically receives a welcome email, which includes the active **first-order coupon** from Admin → Coupons when one is configured.
 - **Manage profile** — customers can add or edit their name and mobile number anytime from the Profile screen (`POST /api/me/profile`).
 - **Loyalty gate** — logged-in members without a phone number see a gentle checkout nudge to add one and start earning points.
+- **Referrals / invite** — every customer gets a unique invite code (Profile → "Invite friends & earn"). Friends get a discount on their first order; the referrer earns loyalty points once the friend's first order is paid. Shared via the native share sheet; reward amounts are set in Admin → Settings.
 - **In-app Account Deletion** (Profile → "Delete my account" → `DELETE /api/user/me`) — cascades sessions, push tokens, saved addresses. _(Required for Apple App Store compliance.)_
 - **Weekly rotating menu** — order Sun–Thu, delivered Friday. Home hero, chef's featured, this-week grid, upcoming weeks.
 - **Two menu modes** per week (admin-toggleable):
@@ -124,7 +125,7 @@ bong-hneshel/
 | `coupons` | Full CRUD for discount coupons (percent/fixed, first-order-only rule) |
 | `customers` | Customer list |
 | `delivery` | Delivery-partner onboarding + order assignment (auto-polls) |
-| `settings` | Payment methods, per-method HST, tax, Twilio/notification config |
+| `settings` | Payment methods, per-method HST, tax, loyalty rates, **referral rewards**, Twilio/notification config |
 | `billing` | Billing / platform tenant info |
 | **New Order** modal | Manually place an order on behalf of a customer (search/inline-add customer, items, delivery, payment, optional driver) |
 

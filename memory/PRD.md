@@ -327,3 +327,10 @@ Added email/password login to the customer login screen (previously Google + gue
 - `FirstOrderBanner.tsx` no longer hardcodes "10% OFF / FIRST10". It now fetches the active first-order coupon and renders its real code + discount (e.g. "20% OFF … WELCOME20"). Hides entirely if no active first_time_only coupon exists.
 - Logged-in customers use eligibility-aware `GET /api/coupons/first-time` (null after they've ordered); guests/logged-out use new public `GET /api/coupons/promo`.
 - Verified via curl (`/coupons/promo` → WELCOME20) + screenshot (guest home shows "20% OFF your first order — code WELCOME20").
+
+---
+## Referral / Invite program (2026-06)
+Spec: referrer earns points on friend's FIRST PAID order; friend gets a first-order discount; share via unique code; amounts editable in Admin.
+- Backend (`server.py`): `BusinessSettings` referral_enabled / referral_reward_points / referral_friend_discount_type / referral_friend_discount_value. Helpers `_gen_referral_code`, `_get_or_create_referral_code`, `_link_referral`, `_referral_discount`, `_maybe_reward_referral`. Endpoints `GET /api/referrals/me`, `POST /api/referrals/redeem`. `/auth/register` accepts `referral_code`. Friend discount folded into `discount` in quote + create_order. Referrer reward fired from BOTH loyalty-credit paths (COD/Interac + card finalize), idempotent via a claim on `users.referral_rewarded`. New collection `referrals` (unique invitee_id). Partial unique index on `users.referral_code` (only string values) — fixed a null-dup 500.
+- Frontend: `app/invite.tsx` (code, share sheet, copy, stats, redeem box), `email-auth.tsx` signup referral field + `?ref=` deep link, Profile "Invite friends & earn" row, `admin/settings.tsx` Referral section.
+- Verified: testing_agent iteration_10 — backend 19/19 pytest + all frontend/admin flows. Tests: `backend/tests/test_referrals_iter10.py`.

@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
   KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useAuth } from "@/src/auth";
@@ -27,6 +27,7 @@ const SUBTITLES: Record<Mode, string> = {
 
 export default function EmailAuthScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ ref?: string }>();
   const { signInWithEmail, signUpWithEmail } = useAuth();
 
   const [mode, setMode] = React.useState<Mode>("login");
@@ -35,10 +36,20 @@ export default function EmailAuthScreen() {
   const [phone, setPhone] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [code, setCode] = React.useState("");
+  const [referralCode, setReferralCode] = React.useState("");
   const [showPw, setShowPw] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
+
+  // Prefill referral code from an invite deep link (?ref=CODE) and jump to signup.
+  React.useEffect(() => {
+    const ref = (params.ref || "").toString().toUpperCase();
+    if (ref) {
+      setReferralCode(ref);
+      setMode("signup");
+    }
+  }, [params.ref]);
 
   const reset = (m: Mode) => { setMode(m); setError(null); setNotice(null); };
 
@@ -56,7 +67,7 @@ export default function EmailAuthScreen() {
         else setError(r.error || "Incorrect email or password.");
       } else if (mode === "signup") {
         if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
-        const r = await signUpWithEmail(e, password, name, phone);
+        const r = await signUpWithEmail(e, password, name, phone, referralCode);
         if (r.ok) router.replace("/(tabs)");
         else setError(r.error || "Could not create account.");
       } else if (mode === "forgot") {
@@ -170,6 +181,23 @@ export default function EmailAuthScreen() {
                 * Optional, but add your mobile number to become eligible to earn loyalty
                 points and redeem them for discounts on future orders.
               </Text>
+            </View>
+          )}
+
+          {mode === "signup" && (
+            <View style={styles.field}>
+              <Text style={styles.label}>Referral code <Text style={styles.optional}>*optional</Text></Text>
+              <TextInput
+                testID="email-auth-referral"
+                value={referralCode}
+                onChangeText={(t) => setReferralCode(t.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))}
+                placeholder="Enter a friend's code"
+                placeholderTextColor={colors.textMuted}
+                style={[styles.input, { letterSpacing: 2, fontWeight: "700" }]}
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
+              <Text style={styles.hint}>Have a friend’s invite code? Enter it to get a discount on your first order.</Text>
             </View>
           )}
 

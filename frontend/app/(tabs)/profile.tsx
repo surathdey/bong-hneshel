@@ -165,6 +165,14 @@ export default function ProfileTab() {
             </View>
             <Text style={styles.editLabel}>{user.phone ? "Edit" : "Add"}</Text>
           </TouchableOpacity>
+          <TouchableOpacity testID="profile-invite" style={styles.linkRow} onPress={() => router.push("/invite")}>
+            <Ionicons name="gift-outline" size={20} color={colors.text} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.linkText}>Invite friends & earn</Text>
+              <Text style={styles.linkSub}>Share your code — friends save, you earn points</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
         </View>
         )}
 

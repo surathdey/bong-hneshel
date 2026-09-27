@@ -32,6 +32,10 @@ type Settings = {
   loyalty_enabled?: boolean;
   loyalty_earn_points_per_dollar?: number;
   loyalty_redeem_points_per_dollar?: number;
+  referral_enabled?: boolean;
+  referral_reward_points?: number;
+  referral_friend_discount_type?: string;
+  referral_friend_discount_value?: number;
   home_hero_tagline?: string;
   notify_email?: string;
   notify_phone?: string;
@@ -62,6 +66,8 @@ export default function AdminSettings() {
   const [overStr, setOverStr] = useState("15.00");
   const [earnStr, setEarnStr] = useState("1");
   const [redeemStr, setRedeemStr] = useState("100");
+  const [refPointsStr, setRefPointsStr] = useState("100");
+  const [refDiscStr, setRefDiscStr] = useState("10");
 
   const load = useCallback(async () => {
     const r = await adminApi.get<Settings>("/admin/settings");
@@ -95,6 +101,14 @@ export default function AdminSettings() {
       if (typeof r.data.loyalty_redeem_points_per_dollar !== "number") r.data.loyalty_redeem_points_per_dollar = 100;
       setEarnStr(String(r.data.loyalty_earn_points_per_dollar ?? 1));
       setRedeemStr(String(r.data.loyalty_redeem_points_per_dollar ?? 100));
+      if (typeof r.data.referral_enabled !== "boolean") r.data.referral_enabled = true;
+      if (typeof r.data.referral_friend_discount_type !== "string") r.data.referral_friend_discount_type = "percent";
+      setRefPointsStr(String(r.data.referral_reward_points ?? 100));
+      setRefDiscStr(
+        r.data.referral_friend_discount_type === "fixed"
+          ? ((r.data.referral_friend_discount_value ?? 0) / 100).toFixed(2)
+          : String(r.data.referral_friend_discount_value ?? 10)
+      );
     }
     setLoading(false);
   }, [router]);
@@ -120,6 +134,10 @@ export default function AdminSettings() {
       delivery_fee_over_max_cents: Math.round((parseFloat(overStr) || 0) * 100),
       loyalty_earn_points_per_dollar: Math.max(0, Math.round(parseFloat(earnStr) || 0)),
       loyalty_redeem_points_per_dollar: Math.max(1, Math.round(parseFloat(redeemStr) || 0)),
+      referral_reward_points: Math.max(0, Math.round(parseFloat(refPointsStr) || 0)),
+      referral_friend_discount_value: s.referral_friend_discount_type === "fixed"
+        ? Math.max(0, Math.round((parseFloat(refDiscStr) || 0) * 100))
+        : Math.max(0, Math.round(parseFloat(refDiscStr) || 0)),
     };
     const r = await adminApi.put("/admin/settings", body);
     setSaving(false);
@@ -318,6 +336,52 @@ export default function AdminSettings() {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Referral / Invite</Text>
+        <TouchableOpacity
+          testID="set-referral-toggle"
+          style={[styles.toggleRow, s.referral_enabled && styles.toggleRowActive]}
+          onPress={() => setS({ ...s, referral_enabled: !s.referral_enabled })}
+        >
+          <Ionicons name={s.referral_enabled ? "toggle" : "toggle-outline"} size={30} color={s.referral_enabled ? colors.success : colors.textMuted} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.toggleTitle}>Referral program {s.referral_enabled ? "enabled" : "disabled"}</Text>
+            <Text style={styles.toggleSub}>Customers invite friends with a code. The referrer earns points once the friend&apos;s first order is paid.</Text>
+          </View>
+        </TouchableOpacity>
+        {s.referral_enabled && (
+          <View style={{ marginTop: spacing.sm }}>
+            <Field label="Referrer reward (loyalty points)" testID="set-referral-points" value={refPointsStr} onChange={setRefPointsStr} keyboardType="number-pad" />
+            <View style={styles.refTypeRow}>
+              <TouchableOpacity
+                testID="set-referral-type-percent"
+                style={[styles.refTypeBtn, s.referral_friend_discount_type !== "fixed" && styles.refTypeBtnActive]}
+                onPress={() => setS({ ...s, referral_friend_discount_type: "percent" })}
+              >
+                <Text style={[styles.refTypeText, s.referral_friend_discount_type !== "fixed" && styles.refTypeTextActive]}>% off</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                testID="set-referral-type-fixed"
+                style={[styles.refTypeBtn, s.referral_friend_discount_type === "fixed" && styles.refTypeBtnActive]}
+                onPress={() => setS({ ...s, referral_friend_discount_type: "fixed" })}
+              >
+                <Text style={[styles.refTypeText, s.referral_friend_discount_type === "fixed" && styles.refTypeTextActive]}>$ off</Text>
+              </TouchableOpacity>
+            </View>
+            <Field
+              label={s.referral_friend_discount_type === "fixed" ? "Friend's first-order discount ($)" : "Friend's first-order discount (%)"}
+              testID="set-referral-discount"
+              value={refDiscStr}
+              onChange={setRefDiscStr}
+              keyboardType="decimal-pad"
+            />
+            <Text style={styles.toggleSub}>
+              {`Referrer gets ${refPointsStr || "0"} points; the invited friend gets ${s.referral_friend_discount_type === "fixed" ? `$${refDiscStr || "0"}` : `${refDiscStr || "0"}%`} off their first order.`}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Payment Methods · {enabledCount} enabled</Text>
 
         <PaymentCard
@@ -460,6 +524,11 @@ const styles = StyleSheet.create({
   toggleRowActive: { backgroundColor: "#DCFCE7", borderColor: "#BBF7D0" },
   toggleTitle: { color: colors.text, fontWeight: "800", fontSize: 14 },
   toggleSub: { color: colors.textMuted, fontSize: 12 },
+  refTypeRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.sm },
+  refTypeBtn: { flex: 1, paddingVertical: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, alignItems: "center" },
+  refTypeBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  refTypeText: { fontWeight: "700", color: colors.textMuted },
+  refTypeTextActive: { color: "#fff" },
   brandDot: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   pmTitle: { color: colors.text, fontWeight: "800", fontSize: 14 },
   pmDesc: { color: colors.textMuted, fontSize: 11, marginTop: 2 },

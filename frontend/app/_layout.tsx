@@ -112,6 +112,7 @@ export default function RootLayout() {
             <Stack.Screen name="index" />
             <Stack.Screen name="login" />
             <Stack.Screen name="email-auth" />
+            <Stack.Screen name="invite" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="cart" options={{ presentation: "modal" }} />
             <Stack.Screen name="order/[id]" />
