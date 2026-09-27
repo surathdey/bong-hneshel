@@ -19,6 +19,7 @@ export default function ProfileTab() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [loyalty, setLoyalty] = React.useState<{ enabled: boolean; earn: number; redeem: number }>({ enabled: true, earn: 1, redeem: 100 });
+  const [refInfo, setRefInfo] = React.useState<{ you_were_referred: boolean; your_bonus_status: string; friend_discount_label: string } | null>(null);
   React.useEffect(() => { (async () => {
     const r = await api.get<any>("/settings");
     if (r.ok) setLoyalty({
@@ -27,6 +28,11 @@ export default function ProfileTab() {
       redeem: r.data.loyalty_redeem_points_per_dollar ?? 100,
     });
   })(); }, []);
+  React.useEffect(() => { (async () => {
+    if (!user || user.role === "guest") return;
+    const r = await api.get<any>("/referrals/me");
+    if (r.ok) setRefInfo(r.data);
+  })(); }, [user]);
 
   const enablePush = async () => {    if (Platform.OS === "web") { Alert.alert("Not available", "Push works on device builds only."); return; }
     try {
@@ -149,6 +155,22 @@ export default function ProfileTab() {
               {`Earn ${loyalty.earn} point${loyalty.earn === 1 ? "" : "s"} per $1 spent. Redeem ${loyalty.redeem} points = $1 off future orders.`}
             </Text>
           </View>
+          {refInfo?.you_were_referred && (
+            <View style={styles.referralBonusRow} testID="profile-referral-bonus">
+              <Ionicons name="gift" size={20} color={colors.success} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.referralBonusTitle}>Referral bonus</Text>
+                <Text style={styles.referralBonusSub}>
+                  {refInfo.your_bonus_status === "used"
+                    ? `Applied — you got ${refInfo.friend_discount_label} on your first order.`
+                    : `Ready — ${refInfo.friend_discount_label} on your first order.`}
+                </Text>
+              </View>
+              {refInfo.your_bonus_status === "used" && (
+                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+              )}
+            </View>
+          )}
         </View>
         )}
 
@@ -275,6 +297,9 @@ const styles = StyleSheet.create({
   section: { padding: spacing.lg, gap: spacing.sm },
   sectionTitle: { color: colors.textMuted, letterSpacing: 2, fontSize: 11, fontWeight: "800", marginBottom: 4 },
   loyaltyCard: { backgroundColor: colors.accent, padding: spacing.xl, borderRadius: radius.lg, ...shadows.card },
+  referralBonusRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.success, borderRadius: radius.md, padding: spacing.md, marginTop: spacing.md },
+  referralBonusTitle: { fontSize: 14, fontWeight: "800", color: colors.text },
+  referralBonusSub: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   loyaltyHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   loyaltyLabel: { color: "#F0E7D8", letterSpacing: 3, fontSize: 10, fontWeight: "800" },
   loyaltyPoints: { color: "#fff", fontSize: 48, fontWeight: "800", marginTop: 6, letterSpacing: -1 },

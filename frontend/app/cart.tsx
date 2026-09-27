@@ -655,6 +655,15 @@ export default function CartScreen() {
                     )}
                     <View style={styles.hr} />
                     <SumRow label="Total" value={centsToCAD(quote.total_cents)} bold />
+                    {(() => {
+                      const saved = (quote.discount_cents || 0) + (quote.referral_discount_cents || 0) + (quote.points_redeemed_cents || 0);
+                      return saved > 0 ? (
+                        <View style={styles.savingsRow} testID="cart-savings">
+                          <Ionicons name="pricetags" size={16} color={colors.success} />
+                          <Text style={styles.savingsText}>You saved {centsToCAD(saved)} today 🎉</Text>
+                        </View>
+                      ) : null;
+                    })()}
                   </View>
                   <View style={styles.policyBox} testID="cart-delivery-policy">
                     <View style={styles.policyRow}>
@@ -777,6 +786,8 @@ const styles = StyleSheet.create({
   loyaltyPromptText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: "600" },
   loyaltyGate: { marginTop: spacing.sm, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.chipBg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.secondary, paddingVertical: spacing.md, paddingHorizontal: spacing.md },
   loyaltyGateText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: "600" },
+  savingsRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.chipBg, borderRadius: radius.md, paddingVertical: spacing.md, marginTop: spacing.md },
+  savingsText: { color: colors.success, fontSize: 15, fontWeight: "800" },
 
   summaryBox: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border },
   feeHint: { fontSize: 11, color: colors.textMuted, marginTop: -4, marginBottom: 2 },

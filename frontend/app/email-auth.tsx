@@ -37,6 +37,7 @@ export default function EmailAuthScreen() {
   const [password, setPassword] = React.useState("");
   const [code, setCode] = React.useState("");
   const [referralCode, setReferralCode] = React.useState("");
+  const [inviteLabel, setInviteLabel] = React.useState<string>("");
   const [showPw, setShowPw] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -48,6 +49,14 @@ export default function EmailAuthScreen() {
     if (ref) {
       setReferralCode(ref);
       setMode("signup");
+      (async () => {
+        const r = await api.get<any>("/settings");
+        if (r.ok && r.data?.referral_enabled) {
+          const t = r.data.referral_friend_discount_type;
+          const v = Number(r.data.referral_friend_discount_value || 0);
+          if (v > 0) setInviteLabel(t === "fixed" ? `$${(v / 100).toFixed(2)} off` : `${v}% off`);
+        }
+      })();
     }
   }, [params.ref]);
 
@@ -113,6 +122,15 @@ export default function EmailAuthScreen() {
 
           <Text style={styles.title}>{TITLES[mode]}</Text>
           <Text style={styles.subtitle}>{SUBTITLES[mode]}</Text>
+
+          {mode === "signup" && !!referralCode && (
+            <View style={styles.inviteBanner} testID="email-auth-invite-banner">
+              <Ionicons name="gift" size={20} color={colors.success} />
+              <Text style={styles.inviteBannerText}>
+                You were invited — enjoy {inviteLabel ? inviteLabel : "a discount"} your first order!
+              </Text>
+            </View>
+          )}
 
           {(mode === "login" || mode === "signup") && (
             <View style={styles.segment}>
@@ -291,6 +309,8 @@ const styles = StyleSheet.create({
   field: { marginBottom: spacing.lg },
   label: { fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 6 },
   optional: { fontSize: 12, fontWeight: "600", color: colors.primary },
+  inviteBanner: { flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.success, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg },
+  inviteBannerText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: "700" },
   hint: { fontSize: 12, color: colors.textMuted, marginTop: 6, lineHeight: 17 },
   input: {
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,

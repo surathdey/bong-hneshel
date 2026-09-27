@@ -1518,6 +1518,10 @@ async def my_referral(user: User = Depends(_current_user)):
     # Has this user themselves been referred and is still eligible to redeem?
     udoc = await db.users.find_one({"user_id": user.user_id}, {"_id": 0, "referred_by": 1})
     prior_orders = await db.orders.count_documents({"user_id": user.user_id, "status": {"$ne": "cancelled"}})
+    you_were_referred = bool((udoc or {}).get("referred_by"))
+    your_bonus_status = "none"
+    if you_were_referred:
+        your_bonus_status = "used" if prior_orders > 0 else "available"
     return {
         "code": code,
         "enabled": bool(settings.get("referral_enabled", True)),
@@ -1528,8 +1532,49 @@ async def my_referral(user: User = Depends(_current_user)):
         "invited_count": invited,
         "rewarded_count": rewarded,
         "points_earned": rewarded * reward_points,
-        "can_redeem": bool(not (udoc or {}).get("referred_by") and prior_orders == 0),
+        "can_redeem": bool(not you_were_referred and prior_orders == 0),
+        "you_were_referred": you_were_referred,
+        "your_bonus_status": your_bonus_status,
     }
+
+
+@api.get("/admin/referrals/leaderboard")
+async def admin_referral_leaderboard(admin=Depends(_current_admin)):
+    """Top referrers, ranked by friends who ordered then friends invited."""
+    settings = await _get_settings()
+    reward_points = int(settings.get("referral_reward_points", 0) or 0)
+    pipeline = [
+        {"$group": {
+            "_id": "$referrer_id",
+            "invited": {"$sum": 1},
+            "rewarded": {"$sum": {"$cond": [{"$eq": ["$status", "rewarded"]}, 1, 0]}},
+        }},
+        {"$sort": {"rewarded": -1, "invited": -1}},
+        {"$limit": 100},
+    ]
+    rows = [r async for r in db.referrals.aggregate(pipeline)]
+    ids = [r["_id"] for r in rows]
+    users: dict = {}
+    if ids:
+        async for u in db.users.find(
+            {"user_id": {"$in": ids}},
+            {"_id": 0, "user_id": 1, "name": 1, "email": 1, "loyalty_points": 1, "referral_code": 1},
+        ):
+            users[u["user_id"]] = u
+    out = []
+    for r in rows:
+        u = users.get(r["_id"], {})
+        out.append({
+            "referrer_id": r["_id"],
+            "name": u.get("name") or "Unknown",
+            "email": u.get("email") or "",
+            "code": u.get("referral_code") or "",
+            "invited": r["invited"],
+            "rewarded": r["rewarded"],
+            "points_earned": r["rewarded"] * reward_points,
+            "loyalty_points": u.get("loyalty_points", 0),
+        })
+    return {"leaderboard": out, "reward_points": reward_points}
 
 
 @api.post("/referrals/redeem")
