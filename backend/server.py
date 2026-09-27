@@ -745,6 +745,7 @@ class EmailRegisterReq(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     name: Optional[str] = None
+    phone: Optional[str] = None
 
 
 class EmailLoginReq(BaseModel):
@@ -770,7 +771,8 @@ async def register_with_email(req: EmailRegisterReq):
     if existing:
         raise HTTPException(409, "An account with this email already exists. Try signing in instead.")
     name = (req.name or "").strip() or email.split("@")[0]
-    user = User(user_id=f"user_{uuid.uuid4().hex[:12]}", email=email, name=name, role="customer")
+    phone = (req.phone or "").strip() or None
+    user = User(user_id=f"user_{uuid.uuid4().hex[:12]}", email=email, name=name, phone=phone, role="customer")
     doc = user.model_dump()
     doc["password_hash"] = _pwd.hash(req.password)
     doc["provider"] = "password"

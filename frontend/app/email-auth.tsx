@@ -32,6 +32,7 @@ export default function EmailAuthScreen() {
   const [mode, setMode] = React.useState<Mode>("login");
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
+  const [phone, setPhone] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [code, setCode] = React.useState("");
   const [showPw, setShowPw] = React.useState(false);
@@ -55,7 +56,7 @@ export default function EmailAuthScreen() {
         else setError(r.error || "Incorrect email or password.");
       } else if (mode === "signup") {
         if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
-        const r = await signUpWithEmail(e, password, name);
+        const r = await signUpWithEmail(e, password, name, phone);
         if (r.ok) router.replace("/(tabs)");
         else setError(r.error || "Could not create account.");
       } else if (mode === "forgot") {
@@ -152,6 +153,26 @@ export default function EmailAuthScreen() {
             />
           </View>
 
+          {mode === "signup" && (
+            <View style={styles.field}>
+              <Text style={styles.label}>Mobile number <Text style={styles.optional}>*optional</Text></Text>
+              <TextInput
+                testID="email-auth-phone"
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="+1 (416) 555-0100"
+                placeholderTextColor={colors.textMuted}
+                style={styles.input}
+                keyboardType="phone-pad"
+                autoCorrect={false}
+              />
+              <Text style={styles.hint}>
+                * Optional, but add your mobile number to become eligible to earn loyalty
+                points and redeem them for discounts on future orders.
+              </Text>
+            </View>
+          )}
+
           {mode === "reset" && (
             <View style={styles.field}>
               <Text style={styles.label}>6-digit code</Text>
@@ -241,6 +262,8 @@ const styles = StyleSheet.create({
   segTextActive: { color: colors.text },
   field: { marginBottom: spacing.lg },
   label: { fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 6 },
+  optional: { fontSize: 12, fontWeight: "600", color: colors.primary },
+  hint: { fontSize: 12, color: colors.textMuted, marginTop: 6, lineHeight: 17 },
   input: {
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
     borderRadius: radius.md, paddingHorizontal: spacing.lg, paddingVertical: 14,

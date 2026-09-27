@@ -25,7 +25,7 @@ type AuthState = {
   signIn: () => Promise<void>;
   signInAsGuest: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  signUpWithEmail: (email: string, password: string, name?: string) => Promise<{ ok: boolean; error?: string }>;
+  signUpWithEmail: (email: string, password: string, name?: string, phone?: string) => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -130,11 +130,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { ok: false, error: r.error };
   }, []);
 
-  const signUpWithEmail = useCallback(async (email: string, password: string, name?: string) => {
+  const signUpWithEmail = useCallback(async (email: string, password: string, name?: string, phone?: string) => {
     const r = await api.post<{ session_token: string; user: CurrentUser }>("/auth/register", {
       email: email.trim(),
       password,
       name: name?.trim() || undefined,
+      phone: phone?.trim() || undefined,
     });
     if (r.ok) {
       await setToken(r.data.session_token);
