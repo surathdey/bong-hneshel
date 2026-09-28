@@ -1330,26 +1330,28 @@ async def promo_coupon():
 
 
 async def _apply_coupon(code: Optional[str], subtotal: int, user):
-    """Validate a coupon for this user/order and return (discount_cents, code_or_None).
-    Enforces min-order and first-time-only (logged-in, no prior orders) rules."""
+    """Validate a coupon for this user/order and return (discount_cents, code_or_None, error_or_None).
+    Enforces min-order and first-time-only (logged-in, no prior orders) rules.
+    `error` is a customer-friendly reason when a provided code could NOT be applied."""
     if not code:
-        return 0, None
+        return 0, None, None
     c = await db.coupons.find_one({"code": code.upper(), "active": True}, {"_id": 0})
     if not c:
-        return 0, None
-    if subtotal < int(c.get("min_order_cents", 0) or 0):
-        return 0, None
+        return 0, None, "This coupon code isn't valid."
+    min_order = int(c.get("min_order_cents", 0) or 0)
+    if subtotal < min_order:
+        return 0, None, f"Add {'${:.2f}'.format(min_order / 100)} more to use this coupon."
     if c.get("first_time_only"):
         if getattr(user, "role", "customer") == "guest":
-            return 0, None
+            return 0, None, "Sign in to use this first-order coupon."
         prior = await db.orders.count_documents({"user_id": user.user_id, "status": {"$ne": "cancelled"}})
         if prior > 0:
-            return 0, None
+            return 0, None, "You've already used this first-order coupon."
     if c["discount_type"] == "percent":
         discount = subtotal * int(c["value"]) // 100
     else:
         discount = min(int(c["value"]), subtotal)
-    return discount, c["code"]
+    return discount, c["code"], None
 
 
 @api.get("/coupons/{code}")
@@ -2003,7 +2005,7 @@ def _tax_enabled_for_method(settings: dict, payment_method: str) -> bool:
 async def order_quote(req: QuoteOrderReq, user: User = Depends(_current_user)):
     snaps, subtotal = await _resolve_items(req.items)
     settings = await _get_settings()
-    discount, coupon = await _apply_coupon(req.coupon_code, subtotal, user)
+    discount, coupon, coupon_err = await _apply_coupon(req.coupon_code, subtotal, user)
     referral_discount = max(0, min(await _referral_discount(user, subtotal, settings), subtotal - discount))
     total_discount = discount + referral_discount
     _pts_used, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - total_discount))
@@ -2027,6 +2029,7 @@ async def order_quote(req: QuoteOrderReq, user: User = Depends(_current_user)):
         "points_redeemed_cents": points_redeem_cents,
         "total_cents": total,
         "coupon_code": coupon,
+        "coupon_error": coupon_err,
         "items_snapshot": snaps,
         "points_available": user.loyalty_points,
     }
@@ -2049,7 +2052,7 @@ async def create_order(req: CreateOrderReq, request: Request, user: User = Depen
         )
     snaps, subtotal = await _resolve_items(req.items)
     settings = await _get_settings()
-    discount, coupon_code = await _apply_coupon(req.coupon_code, subtotal, user)
+    discount, coupon_code, _coupon_err = await _apply_coupon(req.coupon_code, subtotal, user)
     referral_discount = max(0, min(await _referral_discount(user, subtotal, settings), subtotal - discount))
     total_discount = discount + referral_discount
     points_redeem, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - total_discount))
