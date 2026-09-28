@@ -6018,6 +6018,9 @@ async def health_web_bundle():
         "frontend_source_shipped": Path("/app/frontend/package.json").exists(),
         "npx_available": _sh.which("npx") is not None,
         "yarn_available": _sh.which("yarn") is not None,
+        "committed_marker": _read_web_marker(),
+        "current_source_hash": (_frontend_source_hash() or None),
+        "bundle_matches_source": (_read_web_marker() is not None and _read_web_marker() == _frontend_source_hash()),
     }
 
 
@@ -6130,6 +6133,142 @@ def _try_build_web_bundle() -> bool:
 
 # Fire the build check ONCE at module import.
 _try_build_web_bundle()
+
+
+# ---------------------------------------------------------------
+# FRESHNESS GUARANTEE
+# The committed /app/backend/web_dist/ bundle can go stale relative to the
+# frontend source that ships in the image. To make sure production ALWAYS
+# serves the latest code after a publish, we fingerprint the frontend source
+# (app/ + src/ + config) and rebuild the bundle in the background whenever the
+# committed bundle's marker doesn't match. This also keeps the committed bundle
+# continuously fresh in preview (every backend restart after a frontend change
+# re-mirrors it), so whatever the user publishes is up to date.
+# ---------------------------------------------------------------
+_WEB_SOURCE_MARKER = _WEB_DIST_PROD / ".source_hash"
+
+
+def _frontend_source_hash() -> Optional[str]:
+    root = Path("/app/frontend")
+    if not (root / "package.json").exists():
+        return None
+    h = hashlib.sha256()
+    targets: list = []
+    for d in ("app", "src"):
+        dp = root / d
+        if dp.exists():
+            targets += [p for p in dp.rglob("*") if p.is_file() and "node_modules" not in p.parts]
+    for f in ("app.config.js", "brand.config.js", "package.json"):
+        fp = root / f
+        if fp.exists():
+            targets.append(fp)
+    for p in sorted(targets, key=lambda x: str(x)):
+        try:
+            h.update(str(p.relative_to(root)).encode())
+            h.update(p.read_bytes())
+        except Exception:
+            pass
+    return h.hexdigest()
+
+
+def _read_web_marker() -> Optional[str]:
+    try:
+        return _WEB_SOURCE_MARKER.read_text().strip() if _WEB_SOURCE_MARKER.exists() else None
+    except Exception:
+        return None
+
+
+def _write_web_marker(value: str) -> None:
+    try:
+        _WEB_DIST_PROD.mkdir(parents=True, exist_ok=True)
+        _WEB_SOURCE_MARKER.write_text(value)
+    except Exception as e:
+        log.warning(f"[web-build] marker write failed: {e}")
+
+
+def _do_web_export_and_mirror(timeout: int = 300) -> bool:
+    """Export the Expo web bundle from /app/frontend and mirror it into the
+    prod dir with an atomic-ish swap. Best-effort; returns True on success."""
+    import subprocess, shutil
+    frontend_dir = Path("/app/frontend")
+    if not (frontend_dir / "package.json").exists():
+        return False
+    yarn = shutil.which("yarn")
+    npx = shutil.which("npx") or shutil.which("npm")
+    if not (frontend_dir / "node_modules").exists() and yarn:
+        try:
+            subprocess.run(
+                [yarn, "install", "--frozen-lockfile", "--production=false"],
+                cwd=str(frontend_dir), timeout=300, check=False,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                env={**os.environ, "CI": "1", "SKIP_PREINSTALL_GUARD": "1"},
+            )
+        except Exception as e:
+            log.warning(f"[web-build] yarn install failed: {e}")
+    tool = yarn or npx
+    if not tool:
+        return False
+    cmd = ([tool, "run", "build:web"] if tool.endswith("yarn")
+           else [tool, "expo", "export", "--platform", "web", "--output-dir", "dist"])
+    try:
+        proc = subprocess.run(
+            cmd, cwd=str(frontend_dir), timeout=timeout, check=False,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env={**os.environ, "APP_VARIANT": os.environ.get("APP_VARIANT", "customer"), "CI": "1"},
+        )
+        log.info(f"[web-build] export exit={proc.returncode}")
+    except Exception as e:
+        log.error(f"[web-build] export failed: {e}")
+        return False
+    if not (_WEB_DIST_PREVIEW / "index.html").exists():
+        return False
+    try:
+        parent = _WEB_DIST_PROD.parent
+        tmp = parent / "web_dist.new"
+        old = parent / "web_dist.old"
+        if tmp.exists():
+            shutil.rmtree(tmp)
+        shutil.copytree(_WEB_DIST_PREVIEW, tmp)
+        if old.exists():
+            shutil.rmtree(old)
+        if _WEB_DIST_PROD.exists():
+            os.replace(str(_WEB_DIST_PROD), str(old))
+        os.replace(str(tmp), str(_WEB_DIST_PROD))
+        if old.exists():
+            shutil.rmtree(old)
+        log.info(f"[web-build] mirrored fresh bundle -> {_WEB_DIST_PROD}")
+        return True
+    except Exception as e:
+        log.warning(f"[web-build] mirror failed: {e}")
+        return False
+
+
+def _maybe_schedule_web_refresh() -> None:
+    """Rebuild the bundle in the background if it's stale vs the frontend source."""
+    try:
+        src = _frontend_source_hash()
+        if not src:
+            log.info("[web-build] no frontend source in container — serving committed bundle as-is")
+            return
+        if _read_web_marker() == src and (_WEB_DIST_PROD / "index.html").exists():
+            log.info("[web-build] bundle matches source fingerprint — no rebuild needed")
+            return
+        log.info("[web-build] bundle stale/unmarked vs source — scheduling background rebuild")
+        import threading
+
+        def _bg():
+            if _do_web_export_and_mirror():
+                _write_web_marker(src)
+                log.info("[web-build] background refresh complete — production is now on latest code")
+            else:
+                log.warning("[web-build] background refresh failed; keeping existing committed bundle")
+
+        threading.Thread(target=_bg, daemon=True).start()
+    except Exception as e:
+        log.warning(f"[web-build] refresh scheduling error: {e}")
+
+
+_maybe_schedule_web_refresh()
 
 WEB_DIST = _resolve_web_dist() or _WEB_DIST_PROD  # re-resolve after build
 _WEB_DIST_PRESENT = _resolve_web_dist() is not None

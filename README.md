@@ -256,7 +256,7 @@ Ships via Emergent's one-click **Publish** flow:
 2. **Publish again with `APP_VARIANT=delivery`** → separate *Bong Hneshel Delivery* iOS + Android build (own bundle ID).
 3. **Admin Web Portal** ships alongside the web build under `/admin/*`.
 
-**Production web note:** `node_modules` is stripped in the mobile-build pipeline, so the Expo web bundle is pre-built into **`backend/web_dist/`** and served by the backend (SPA catch-all). Diagnostic: `GET /api/health/web-bundle`.
+**Production web note:** `node_modules` is stripped in the mobile-build pipeline, so the Expo web bundle is pre-built into **`backend/web_dist/`** and served by the backend (SPA catch-all). It is kept in sync automatically: the backend fingerprints the frontend source (`app/`+`src/`+config) into `web_dist/.source_hash` and, on startup, rebuilds the bundle in the background whenever the committed copy is stale — so every deploy converges to the latest code. Diagnostic: `GET /api/health/web-bundle` (`bundle_matches_source` should be `true`).
 
 Backend + MongoDB deploy together as a single container.
 
