@@ -36,7 +36,7 @@ This ships all three apps from one codebase, shares the theme, API layer, auth, 
 ```
 bong-hneshel/
 ├── backend/                      # FastAPI + MongoDB (serves ALL three apps)
-│   ├── server.py                 # Main API — ~5850 lines (auth/menu/orders/delivery/admin/payments/AI)
+│   ├── server.py                 # Main API — ~6100 lines (auth/menu/orders/delivery/admin/payments/referrals/AI)
 │   ├── menu_ai.py                # AI menu descriptions (GPT) + food photos (Gemini Nano Banana)
 │   ├── email_client.py           # Resend email (Emergent-managed)
 │   ├── twilio_client.py          # Twilio SMS
@@ -64,6 +64,8 @@ bong-hneshel/
 │   │   ├── order/[id].tsx        # Live order tracking
 │   │   ├── legal/privacy.tsx     # Privacy policy
 │   │   ├── cart.tsx              # Bag / checkout
+│   │   ├── invite.tsx            # Referral / invite screen (code, share, redeem)
+│   │   ├── email-auth.tsx        # Email login / signup / forgot-reset / referral capture
 │   │   ├── delivery-partner.tsx  # 🚗 Entire Delivery Partner App
 │   │   ├── login.tsx
 │   │   └── _layout.tsx           # Variant-based routing enforcement
@@ -90,7 +92,7 @@ bong-hneshel/
 - **Welcome email** — every new customer (email **and** Google) automatically receives a welcome email, which includes the active **first-order coupon** from Admin → Coupons when one is configured.
 - **Manage profile** — customers can add or edit their name and mobile number anytime from the Profile screen (`POST /api/me/profile`).
 - **Loyalty gate** — logged-in members without a phone number see a gentle checkout nudge to add one and start earning points.
-- **Referrals / invite** — every customer gets a unique invite code (Profile → "Invite friends & earn"). Friends get a discount on their first order; the referrer earns loyalty points once the friend's first order is paid. Shared via the native share sheet; reward amounts are set in Admin → Settings.
+- **Referrals / invite** — every customer gets a unique invite code (Profile → "Invite friends & earn"): share sheet + copy, live stats (invited / ordered / points earned), and a "Were you invited?" redeem box. Friends get a first-order discount; the referrer earns loyalty points once the friend's first order is paid (one-time, idempotent). Opening an invite link (`/email-auth?ref=CODE`) shows a **"You were invited — enjoy X off"** banner on sign-up and pre-fills the code. Profile shows a **referral-bonus card** under the loyalty balance (Ready → Applied). All reward amounts set in Admin → Settings.
 - **In-app Account Deletion** (Profile → "Delete my account" → `DELETE /api/user/me`) — cascades sessions, push tokens, saved addresses. _(Required for Apple App Store compliance.)_
 - **Weekly rotating menu** — order Sun–Thu, delivered Friday. Home hero, chef's featured, this-week grid, upcoming weeks.
 - **Two menu modes** per week (admin-toggleable):
@@ -99,12 +101,13 @@ bong-hneshel/
 - **Complimentary items** shown when a weekly package is active (e.g. Payesh + Dal of the Week).
 - **Always Available** section — order-anytime staples (Roti, Biryani, Rolls…).
 - **Catering v2** — packages by guest count with choice groups (min/max), upgrade tiers, per-person premium add-ons, always-included items, and a custom-quote contact form.
-- **Bag / Cart** — per-item stepper, coupon input, **loyalty-points redemption**, delivery-slot picker, **Google Places address autocomplete** (Canada-restricted), saved default address (server-side for logged-in, AsyncStorage for guests).
+- **Bag / Cart** — per-item stepper, coupon input, **loyalty-points redemption**, delivery-slot picker, **Google Places address autocomplete** (Canada-restricted), saved default address (server-side for logged-in, AsyncStorage for guests). Coupon and referral discounts show as **separate lines**, plus a **"You saved $X today"** highlight combining all savings.
 - **Distance-based delivery fee** (Google Distance Matrix): 0–20 km FREE, 20–40 km $5, 40–75 km $10, >75 km $15.
+- **Home first-order banner** — dynamic strip that pulls the active first-order coupon (code + discount) from Admin → Coupons; hides itself once the customer has ordered or when no coupon is active.
 - **Payment methods** (data-driven, only enabled ones render): **Stripe** hosted checkout, **PayPal**, **Cash on Delivery**, **Interac e-Transfer** (with inline email + instructions and a "send exactly $X" confirm modal). **Per-method HST** toggle.
 - **Live order tracking** — zoomable Google map (WebView/iframe), driver avatar + call button, "N stops away · ~X–Y min" smart ETA, vertical status timeline, proof-of-delivery photo.
-- **Loyalty rewards** — earn points per $1 on paid orders; redeem in increments for $ off.
-- **Coupons** — percent / fixed, min-order threshold, first-order-only (e.g. `FIRST10` = 10% off).
+- **Loyalty rewards** — earn points per $1 on paid orders; redeem in increments for $ off. Checkout **loyalty gate** nudges phone-less members to add a number.
+- **Coupons** — percent / fixed, min-order threshold, first-order-only (e.g. `WELCOME20` = 20% off).
 
 ### 🚗 Delivery Partner App
 - Separate login (JWT). Seeded demo partner "Rahul Das".
@@ -123,9 +126,10 @@ bong-hneshel/
 | `menu` | Weekly-menu builder (À la carte / Weekly Package / Complimentary / Always Available tabs, pricing modes) |
 | `catering` | Catering package configurator v2 (choice groups, tiers, premium add-ons) |
 | `coupons` | Full CRUD for discount coupons (percent/fixed, first-order-only rule) |
+| `referrals` | Referral leaderboard — top referrers ranked by friends who ordered, with invited/ordered/points totals |
 | `customers` | Customer list |
 | `delivery` | Delivery-partner onboarding + order assignment (auto-polls) |
-| `settings` | Payment methods, per-method HST, tax, loyalty rates, **referral rewards**, Twilio/notification config |
+| `settings` | Payment methods, per-method HST, tax, loyalty rates, **referral rewards** (referrer points + friend discount %/$), Twilio/notification config |
 | `billing` | Billing / platform tenant info |
 | **New Order** modal | Manually place an order on behalf of a customer (search/inline-add customer, items, delivery, payment, optional driver) |
 
