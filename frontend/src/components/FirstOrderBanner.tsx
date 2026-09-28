@@ -1,23 +1,20 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Ionicons from "@react-native-vector-icons/ionicons";
-import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors } from "@/src/theme";
 import { useAuth } from "@/src/auth";
 import { api } from "@/src/api";
 
 /**
- * Slim, dismissible marketing strip promoting the first-order 10% coupon.
+ * Slim, non-interactive marketing strip promoting the first-order coupon.
  * Shown on every customer tab. Hidden automatically for logged-in customers
- * who have already placed an order (no longer eligible).
+ * who have already placed an order (no longer eligible) or when no coupon exists.
  */
 export default function FirstOrderBanner() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { user } = useAuth();
-  const [hidden, setHidden] = React.useState(false);
   const [coupon, setCoupon] = React.useState<any>(null);
 
   React.useEffect(() => {
@@ -32,9 +29,8 @@ export default function FirstOrderBanner() {
     return () => { alive = false; };
   }, [user]);
 
-  if (hidden || !coupon) return null;
+  if (!coupon) return null;
 
-  const isGuest = !user || user.role === "guest";
   const discountLabel = coupon.discount_type === "percent"
     ? `${coupon.value}% OFF`
     : `$${(Number(coupon.value) / 100).toFixed(2)} OFF`;
@@ -43,34 +39,23 @@ export default function FirstOrderBanner() {
     <LinearGradient
       colors={[colors.primary, colors.primaryDark]}
       start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-      style={[styles.wrap, { paddingTop: insets.top + 8 }]}
+      style={[styles.wrap, { paddingTop: insets.top + 10 }]}
     >
-      <TouchableOpacity
-        testID="first-order-banner"
-        activeOpacity={0.9}
-        style={styles.row}
-        onPress={() => router.push(isGuest ? "/login" : "/(tabs)/menu")}
-      >
-        <Ionicons name="gift" size={18} color="#FFFFFF" />
-        <Text style={styles.text} numberOfLines={1}>
-          <Text style={styles.bold}>{discountLabel}</Text> your first order — code <Text style={styles.bold}>{coupon.code}</Text>
+      <View testID="first-order-banner" style={styles.row}>
+        <Ionicons name="gift" size={22} color="#FFFFFF" />
+        <Text style={styles.text}>
+          <Text style={styles.bold}>{discountLabel}</Text> your first order — use code{" "}
+          <Text style={styles.code}>{coupon.code}</Text>
         </Text>
-        <View style={styles.cta}>
-          <Text style={styles.ctaText}>{isGuest ? "Sign in" : "Order"}</Text>
-        </View>
-        <TouchableOpacity testID="first-order-banner-close" hitSlop={10} onPress={() => setHidden(true)}>
-          <Ionicons name="close" size={18} color="rgba(255,255,255,0.85)" />
-        </TouchableOpacity>
-      </TouchableOpacity>
+      </View>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingBottom: 10, paddingHorizontal: 14 },
-  row: { flexDirection: "row", alignItems: "center", gap: 8 },
-  text: { flex: 1, color: "#FFFFFF", fontSize: 13 },
-  bold: { fontWeight: "800" },
-  cta: { backgroundColor: "rgba(255,255,255,0.22)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  ctaText: { color: "#FFFFFF", fontWeight: "800", fontSize: 12 },
+  wrap: { paddingBottom: 12, paddingHorizontal: 16 },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+  text: { flexShrink: 1, color: "#FFFFFF", fontSize: 16, lineHeight: 22, textAlign: "center" },
+  bold: { fontWeight: "900" },
+  code: { fontWeight: "900", letterSpacing: 1 },
 });
