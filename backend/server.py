@@ -3427,6 +3427,46 @@ async def admin_delete_coupon(code: str, admin=Depends(_current_admin)):
     return {"ok": True}
 
 
+@api.get("/admin/coupons/{code}/redemptions")
+async def admin_coupon_redemptions(code: str, admin=Depends(_current_admin)):
+    """List customers who redeemed a given coupon (one row per order that used it)."""
+    c = (code or "").strip().upper()
+    orders = await db.orders.find(
+        {"coupon_code": c, "status": {"$ne": "cancelled"}},
+        {"_id": 0, "order_id": 1, "user_id": 1, "phone": 1, "discount_cents": 1,
+         "total_cents": 1, "status": 1, "created_at": 1},
+    ).sort("created_at", -1).to_list(1000)
+    user_ids = list({o["user_id"] for o in orders if o.get("user_id")})
+    users: dict = {}
+    if user_ids:
+        async for u in db.users.find(
+            {"user_id": {"$in": user_ids}},
+            {"_id": 0, "user_id": 1, "name": 1, "email": 1},
+        ):
+            users[u["user_id"]] = u
+    rows = []
+    for o in orders:
+        u = users.get(o.get("user_id"), {})
+        rows.append({
+            "order_id": o.get("order_id"),
+            "name": u.get("name") or "Guest",
+            "email": u.get("email") or "",
+            "phone": o.get("phone") or "",
+            "discount_cents": int(o.get("discount_cents", 0) or 0),
+            "total_cents": int(o.get("total_cents", 0) or 0),
+            "status": o.get("status"),
+            "created_at": o.get("created_at"),
+        })
+    total_discount = sum(r["discount_cents"] for r in rows)
+    return {
+        "code": c,
+        "count": len(rows),
+        "unique_customers": len(user_ids),
+        "total_discount_cents": total_discount,
+        "redemptions": rows,
+    }
+
+
 @api.get("/admin/master-menu")
 async def admin_master_list(
     q: Optional[str] = None,

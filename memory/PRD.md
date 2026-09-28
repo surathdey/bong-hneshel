@@ -346,3 +346,7 @@ NOTE for future agents: after any frontend change, restarting the backend auto-r
 ---
 ## Coupon error surfacing (2026-06)
 Bug: applying an unusable coupon (first-order-only after already ordering, invalid, ineligible, below min-order) silently gave 0 discount with NO message — user confused. Fix: `_apply_coupon` now returns `(discount, code, error)` with friendly reasons ("You've already used this first-order coupon.", "This coupon code isn't valid.", "Sign in to use this first-order coupon.", "Add $X more to use this coupon."). `/orders/quote` returns `coupon_error`; cart shows a red `cart-coupon-error` row (with Clear) mutually exclusive with the green applied row. Verified: testing_agent iteration_12 (6/6 backend + 3/3 frontend). Tests: `backend/tests/test_coupon_error_iter12.py`.
+
+---
+## Coupon redemptions view (2026-06)
+Admin → Coupons: each coupon card has a new "Redemptions" button opening a modal listing customers who used it. Backend `GET /api/admin/coupons/{code}/redemptions` (admin-gated) queries non-cancelled orders with that `coupon_code`, joins `users` for name/email, returns rows (name, email, phone, order_id, discount_cents, total_cents, status, created_at) + summary (count, unique_customers, total_discount_cents). Frontend `admin/coupons.tsx` shows summary header + scrollable list. Verified via curl (WELCOME20 → 4 redemptions, 401 unauth) + admin UI screenshot. web_dist refreshed, bundle_matches_source true.
