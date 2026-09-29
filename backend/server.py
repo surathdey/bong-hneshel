@@ -5526,6 +5526,23 @@ async def _notify_order_created(order: dict, settings: dict, user_doc: dict):
     invoice_url = _invoice_link(order)
     ref = oid[-6:].upper()
 
+    # ----- Loyalty details for the SMS (points used this order + remaining balance) -----
+    redeem_rate = max(1, int(settings.get("loyalty_redeem_points_per_dollar", 100) or 100))
+    loyalty_enabled = bool(settings.get("loyalty_enabled", True))
+    pts_used = int(order.get("points_redeemed", 0) or 0)
+    pts_used_cents = int(order.get("points_redeemed_cents", 0) or 0)
+    is_guest = (user_doc or {}).get("role") == "guest"
+    balance_pts = int((user_doc or {}).get("loyalty_points", 0) or 0)
+    balance_worth_cents = (balance_pts * 100) // redeem_rate
+    loyalty_used_line = (
+        f"Loyalty used: {pts_used} pts (saved CA${pts_used_cents/100:.2f})\n"
+        if pts_used > 0 else ""
+    )
+    balance_note = (
+        f"You have {balance_pts} loyalty points remaining (~CA${balance_worth_cents/100:.2f}).\n"
+        if (loyalty_enabled and not is_guest) else ""
+    )
+
     # ---- Customer email (Resend) ----
     try:
         if cust_email and _email.is_configured():
@@ -5556,9 +5573,11 @@ async def _notify_order_created(order: dict, settings: dict, user_doc: dict):
             f"We're delighted to cook for you and can't wait to serve you.\n\n"
             f"Order #{ref}\n"
             f"{items_txt}\n"
+            f"{loyalty_used_line}"
             f"Total: CA${total:.2f}\n"
             f"{pay_note}\n\n"
             f"Invoice: {invoice_url}\n\n"
+            f"{balance_note}"
             f"We'll keep you posted. Bon appetit!"
         )
         await _send_sms_via_settings(settings, cust_phone, body)
@@ -5588,7 +5607,12 @@ async def _notify_order_created(order: dict, settings: dict, user_doc: dict):
         logging.warning(f"[order.notify.owner_email] {e}")
     try:
         if owner_phone:
-            await _send_sms_via_settings(settings, owner_phone, f"{BRAND_NAME}: New order #{ref} from {cust}. Total CA${total:.2f} ({order.get('payment_method','').upper()}).")
+            await _send_sms_via_settings(
+                settings, owner_phone,
+                f"{BRAND_NAME}: New order #{ref} from {cust}. "
+                f"Total CA${total:.2f} ({order.get('payment_method','').upper()}).\n"
+                f"{items_txt}"
+            )
     except Exception as e:
         logging.warning(f"[order.notify.owner_sms] {e}")
 
