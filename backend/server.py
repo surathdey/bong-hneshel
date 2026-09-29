@@ -5618,29 +5618,48 @@ async def _notify_order_created(order: dict, settings: dict, user_doc: dict):
 
 
 async def _notify_customer_eta(order: dict, settings: dict, exact: bool):
-    """Notify the customer of a delivery ETA. Registered users get an in-app push;
-    guests get an SMS with a tracking link. Best-effort (never raises)."""
+    """Notify the customer of a delivery ETA via SMS (+ in-app push).
+    `exact=False` → tentative "out for delivery" heads-up sent when the driver
+    sets out. `exact=True` → the customer is next ("1 stop away") so we send a
+    firm ETA with an approximate clock time. Best-effort (never raises)."""
     oid = order.get("order_id", "")
     eta_s = order.get("delivery_eta_seconds") or 0
     mins = max(1, round(eta_s / 60)) if eta_s else None
-    when = (f"in {mins} min" if mins else "shortly")
-    title = "Your order is on the way 🚗" if not exact else "Arriving soon 🛵"
-    msg = (f"Your {BRAND_NAME} order is out for delivery — arriving {('~' if not exact else '')}{when}."
-           if not exact else f"Your {BRAND_NAME} order is arriving {when}. Please be ready!")
     track_url = _track_link(order)
-    user_doc = await db.users.find_one({"user_id": order.get("user_id")}, {"_id": 0}) or {}
-    is_guest = (user_doc.get("role") == "guest")
+    first = ((order.get("address") or {}).get("name") or "there").split()[0]
+    # Approximate clock time (restaurant is in the GTA → America/Toronto).
+    clock = ""
+    if mins:
+        try:
+            from zoneinfo import ZoneInfo
+            arr = datetime.now(ZoneInfo("America/Toronto")) + timedelta(minutes=mins)
+            clock = arr.strftime("%-I:%M %p")
+        except Exception:
+            clock = ""
+    eta_txt = (f"in about {mins} min" + (f" (around {clock})" if clock else "")) if mins else ("shortly" if not exact else "very soon")
+
+    if exact:
+        title = "Arriving soon 🛵"
+        push_msg = f"Your {BRAND_NAME} order is arriving {eta_txt}. Please be ready!"
+        sms = (f"{BRAND_NAME}: Hi {first}, you're next! Your order is arriving {eta_txt}. "
+               f"Track live: {track_url}")
+    else:
+        title = "Your order is on the way 🚗"
+        push_msg = f"Your {BRAND_NAME} order is out for delivery — arriving {eta_txt}."
+        sms = (f"{BRAND_NAME}: Hi {first}, your order is out for delivery! "
+               f"Estimated arrival {eta_txt}. Track live: {track_url}")
+
     # In-app push (works on real builds; no-op otherwise)
     try:
         await send_push(recipients=[order.get("user_id")],
-                        data={"title": title, "message": msg, "action_url": f"/order/{oid}"})
+                        data={"title": title, "message": push_msg, "action_url": f"/order/{oid}"})
     except Exception as e:
         logging.warning(f"[eta.push] {e}")
-    # Guests: SMS with tracking link
-    if is_guest:
+    # SMS to every customer that has a phone number (registered or guest).
+    phone = order.get("phone") or ""
+    if phone:
         try:
-            await _send_sms_via_settings(settings, order.get("phone") or "",
-                                         f"{BRAND_NAME}: {msg} Track: {track_url}")
+            await _send_sms_via_settings(settings, phone, sms)
         except Exception as e:
             logging.warning(f"[eta.sms] {e}")
 
@@ -5695,12 +5714,28 @@ async def delivery_update_order_status(order_id: str, req: DeliveryStatusReq, pa
     logging.info(f"[push MOCK] order {order_id} status → {req.status}")
     if req.status == "delivered":
         fresh = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+        settings = await _get_settings()
         if fresh:
             await _notify_owner_delivered(fresh)
             await _schedule_review_request(fresh)
+            # Customer "delivered" confirmation SMS (+ push).
+            try:
+                first = ((fresh.get("address") or {}).get("name") or "there").split()[0]
+                ref = (fresh.get("order_id", "")[-6:]).upper()
+                dmsg = (f"{BRAND_NAME}: Hi {first}, your order #{ref} has been delivered! "
+                        f"We hope you enjoy every bite. Thank you for ordering with us. 🙏")
+                try:
+                    await send_push(recipients=[fresh.get("user_id")],
+                                    data={"title": "Delivered ✅", "message": f"Your {BRAND_NAME} order has been delivered. Enjoy!",
+                                          "action_url": f"/order/{order_id}"})
+                except Exception:
+                    pass
+                if fresh.get("phone"):
+                    await _send_sms_via_settings(settings, fresh["phone"], dmsg)
+            except Exception as e:
+                logging.warning(f"[delivered.customer_sms] {e}")
         # The next stop is now "1 stop away" — send it an exact ETA (once).
         try:
-            settings = await _get_settings()
             nxt = await db.orders.find({
                 "delivery_partner_id": partner["partner_id"],
                 "delivery_status": {"$in": ["assigned", "picked_up", "on_the_way", "arrived"]},
