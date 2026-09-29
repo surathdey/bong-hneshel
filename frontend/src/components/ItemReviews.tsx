@@ -8,13 +8,13 @@ import { colors, spacing, radius, shadows } from "@/src/theme";
 
 /** Compact inline rating pill shown on menu cards. Renders nothing when there
  * are no approved reviews yet. */
-export function RatingBadge({ avg, count }: { avg?: number; count?: number }) {
+export function RatingBadge({ avg, count, light }: { avg?: number; count?: number; light?: boolean }) {
   if (!count || count <= 0) return null;
   return (
     <View style={styles.badge} testID="rating-badge">
       <Ionicons name="star" size={12} color="#F5A623" />
-      <Text style={styles.badgeText}>{Number(avg || 0).toFixed(1)}</Text>
-      <Text style={styles.badgeCount}>({count})</Text>
+      <Text style={[styles.badgeText, light && { color: "#fff" }]}>{Number(avg || 0).toFixed(1)}</Text>
+      <Text style={[styles.badgeCount, light && { color: "rgba(255,255,255,0.85)" }]}>({count})</Text>
     </View>
   );
 }

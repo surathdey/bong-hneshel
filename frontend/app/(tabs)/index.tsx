@@ -14,10 +14,12 @@ import { mediaUrl } from "@/src/utils/backendUrl";
 import { colors, spacing, radius, shadows } from "@/src/theme";
 import { centsToCAD, isOrderingWindow, upcomingDeliveryDates } from "@/src/utils/format";
 import { BRAND, BRAND_NAME } from "@/src/brand";
+import { RatingBadge } from "@/src/components/ItemReviews";
 
 type MenuItem = {
   item_id: string; name: string; description: string;
   price_cents: number; image_url: string; category: string; tags: string[]; is_featured: boolean; veg_type?: string;
+  avg_rating?: number; review_count?: number;
 };
 type WeeklyPkg = {
   package_id?: string; name: string; description?: string; price_cents: number;
@@ -254,6 +256,9 @@ export default function HomeScreen() {
                       <Text style={styles.aaName} numberOfLines={1}>{it.name}</Text>
                     </View>
                     <Text style={styles.aaDesc} numberOfLines={2}>{it.description}</Text>
+                    {(it.review_count ?? 0) > 0 && (
+                      <View style={{ marginTop: 2 }}><RatingBadge avg={it.avg_rating} count={it.review_count} /></View>
+                    )}
                     <View style={styles.aaFoot}>
                       <Text style={styles.aaPrice}>{centsToCAD(it.price_cents)}</Text>
                       <View style={styles.addBtn}>
@@ -295,6 +300,9 @@ export default function HomeScreen() {
                       <VegMarker type={f.veg_type} />
                       <Text style={styles.featName} numberOfLines={2}>{f.name}</Text>
                     </View>
+                    {(f.review_count ?? 0) > 0 && (
+                      <View style={{ marginTop: 2, marginBottom: 2 }}><RatingBadge avg={f.avg_rating} count={f.review_count} light /></View>
+                    )}
                     <View style={styles.featRow}>
                       <Text style={styles.featPrice}>{centsToCAD(f.price_cents)}</Text>
                       <View style={styles.featAdd}><Ionicons name="add" size={16} color="#fff" /></View>
@@ -327,6 +335,9 @@ export default function HomeScreen() {
                     <Text style={styles.gridName} numberOfLines={1}>{it.name}</Text>
                   </View>
                   <Text style={styles.gridDesc} numberOfLines={2}>{it.description}</Text>
+                  {(it.review_count ?? 0) > 0 && (
+                    <View style={{ marginTop: 2 }}><RatingBadge avg={it.avg_rating} count={it.review_count} /></View>
+                  )}
                   <View style={styles.gridFoot}>
                     <Text style={styles.gridPrice}>{centsToCAD(it.price_cents)}</Text>
                     <View style={styles.addBtn}>
