@@ -392,6 +392,13 @@ class BusinessSettings(BaseModel):
     referral_reward_points: int = 100
     referral_friend_discount_type: str = "percent"   # "percent" | "fixed"
     referral_friend_discount_value: int = 10          # percent (0-100) OR cents
+    # ----- Reviews / ratings program -----
+    # A token-gated review link is texted + emailed to the customer
+    # `review_request_delay_days` days after their order is delivered. Customer
+    # reviews land in an admin moderation queue (customer is NOT told); only
+    # admin-approved reviews appear publicly on menu items.
+    reviews_enabled: bool = True
+    review_request_delay_days: int = 1
     # Per-payment-method configuration.
     # Card (Stripe) shows Apple Pay / Google Pay / cards on the hosted page.
     payment_methods: Dict[str, PaymentMethodConfig] = Field(default_factory=lambda: {
@@ -1143,6 +1150,7 @@ async def _hydrate_menu(doc: dict) -> dict:
     # If there are also legacy embedded items, keep them appended for back-compat.
     inflated.extend(doc.get("items", []) or [])
     out = dict(doc)
+    await _attach_ratings(inflated)
     out["items"] = inflated
     # Resolve complimentary items (display-only). Week-level list takes priority,
     # falling back to the legacy package-level list. Shown to customers ONLY when
@@ -1242,6 +1250,7 @@ async def menu_anytime():
             "allergens": m.get("allergens", []),
             "is_featured": False,
         })
+    await _attach_ratings(out)
     return out
 
 
@@ -2494,6 +2503,10 @@ async def update_order_status(order_id: str, upd: OrderStatusUpdate, admin=Depen
         )
     except Exception:
         pass
+    if upd.status == "delivered":
+        fresh = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+        if fresh:
+            await _schedule_review_request(fresh)
     return {"ok": True}
 
 
@@ -3315,6 +3328,7 @@ async def public_settings():
         "referral_reward_points": int(s.get("referral_reward_points", 0) or 0),
         "referral_friend_discount_type": s.get("referral_friend_discount_type", "percent"),
         "referral_friend_discount_value": int(s.get("referral_friend_discount_value", 0) or 0),
+        "reviews_enabled": bool(s.get("reviews_enabled", True)),
         "home_hero_tagline": s.get("home_hero_tagline", "Order anytime this week — we deliver every weekend."),
         # Expose ONLY safe payment-method fields (never secret keys) so the customer app
         # can render the right method list, apply per-method tax, and show Interac email.
@@ -5659,6 +5673,7 @@ async def delivery_update_order_status(order_id: str, req: DeliveryStatusReq, pa
         fresh = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
         if fresh:
             await _notify_owner_delivered(fresh)
+            await _schedule_review_request(fresh)
         # The next stop is now "1 stop away" — send it an exact ETA (once).
         try:
             settings = await _get_settings()
@@ -6067,6 +6082,368 @@ async def health_web_bundle():
     }
 
 
+# ==========================================================
+# REVIEWS — post-delivery item ratings (token link, moderated)
+# ==========================================================
+import csv as _csv
+import io as _io
+
+
+async def _ratings_map(item_ids: List[str]) -> Dict[str, dict]:
+    """Return {item_id: {avg_rating, review_count}} over APPROVED reviews only."""
+    ids = [i for i in (item_ids or []) if i]
+    if not ids:
+        return {}
+    out: Dict[str, dict] = {}
+    try:
+        pipeline = [
+            {"$match": {"item_id": {"$in": ids}, "status": "approved"}},
+            {"$group": {"_id": "$item_id", "avg": {"$avg": "$rating"}, "count": {"$sum": 1}}},
+        ]
+        async for row in db.reviews.aggregate(pipeline):
+            out[row["_id"]] = {
+                "avg_rating": round(float(row["avg"]), 1),
+                "review_count": int(row["count"]),
+            }
+    except Exception as e:
+        log.warning(f"[review.ratings_map] {e}")
+    return out
+
+
+async def _attach_ratings(items: List[dict]):
+    """Mutate menu item dicts to carry avg_rating + review_count (0 if none)."""
+    if not items:
+        return items
+    rmap = await _ratings_map([it.get("item_id") for it in items])
+    for it in items:
+        r = rmap.get(it.get("item_id"))
+        it["avg_rating"] = r["avg_rating"] if r else 0
+        it["review_count"] = r["review_count"] if r else 0
+    return items
+
+
+def _reviewable_items_from_order(order: dict) -> List[dict]:
+    """Distinct dishes a customer can review from an order snapshot.
+    Menu lines → the dish itself; weekly-package → each picked master dish."""
+    seen: Dict[str, dict] = {}
+    for it in order.get("items_snapshot", []) or []:
+        kind = it.get("kind")
+        if kind == "menu":
+            iid = it.get("ref_id")
+            if iid:
+                seen.setdefault(iid, {"item_id": iid, "name": it.get("name")})
+        elif kind == "weekly_package":
+            for mid in (it.get("package_selection_ids") or []):
+                if mid:
+                    seen.setdefault(mid, {"item_id": mid, "name": None})
+    return list(seen.values())
+
+
+async def _review_items_payload(order: dict) -> List[dict]:
+    """Reviewable items enriched with name + image from the master menu."""
+    base = _reviewable_items_from_order(order)
+    need = [b["item_id"] for b in base]
+    master: Dict[str, dict] = {}
+    if need:
+        async for m in db.master_menu.find(
+            {"item_id": {"$in": need}}, {"_id": 0, "item_id": 1, "name": 1, "image_url": 1}
+        ):
+            master[m["item_id"]] = m
+    out = []
+    for b in base:
+        m = master.get(b["item_id"], {})
+        out.append({
+            "item_id": b["item_id"],
+            "name": b.get("name") or m.get("name") or b["item_id"],
+            "image_url": m.get("image_url", ""),
+        })
+    return out
+
+
+async def _send_review_request(rr: dict, settings: dict):
+    """Deliver a review-request link to the customer (Email + SMS). Best-effort."""
+    try:
+        token = rr.get("token")
+        base = _order_base({"public_base_url": rr.get("public_base_url")})
+        link = f"{base}/review/{token}" if base else f"/review/{token}"
+        cn = (rr.get("customer_name") or "").strip()
+        first = cn.split()[0] if cn else "there"
+
+        # ---- Email ----
+        try:
+            email = rr.get("email") or ""
+            if not email and rr.get("user_id"):
+                udoc = await db.users.find_one({"user_id": rr["user_id"]}, {"_id": 0, "email": 1})
+                if udoc:
+                    email = udoc.get("email") or ""
+            if email and not email.endswith(BRAND_GUEST_DOMAIN) and _email.is_configured():
+                html = (
+                    f"<p>Hi {_html.escape(first)},</p>"
+                    f"<p>Thanks for ordering from {_html.escape(BRAND_NAME)}! We'd love to know how "
+                    "your dishes turned out.</p>"
+                    f"<p><a href='{link}' style='background:#3C053C;color:#fff;padding:12px 22px;"
+                    "border-radius:24px;text-decoration:none;font-weight:800'>Rate your order</a></p>"
+                    "<p>It only takes a few seconds — no login needed.</p>"
+                    f"<p>Warmly,<br/>The {_html.escape(BRAND_NAME)} team</p>"
+                )
+                await _email.send_email(to=email, subject=f"How was your {BRAND_NAME} order?", html=html)
+        except Exception as e:
+            log.warning(f"[review.send.email] {e}")
+
+        # ---- SMS ----
+        try:
+            phone = rr.get("phone") or ""
+            if phone:
+                body = f"{BRAND_NAME}: Thanks for your order! Tell us how it was (10s, no login): {link}"
+                await _send_sms_via_settings(settings, phone, body)
+        except Exception as e:
+            log.warning(f"[review.send.sms] {e}")
+
+        await db.review_requests.update_one(
+            {"order_id": rr["order_id"]},
+            {"$set": {"status": "sent", "sent_at": datetime.now(timezone.utc)}},
+        )
+        log.info(f"[review.send] request sent for order {rr.get('order_id')}")
+    except Exception as e:
+        log.warning(f"[review.send] {e}")
+
+
+_review_sweep_lock = asyncio.Lock()
+
+
+async def _sweep_due_review_requests():
+    """Send any scheduled review requests whose send_after has passed."""
+    try:
+        settings = await _get_settings()
+        if not settings.get("reviews_enabled", True):
+            return
+        now = datetime.now(timezone.utc)
+        async with _review_sweep_lock:
+            due = await db.review_requests.find(
+                {"status": "scheduled", "send_after": {"$lte": now}}, {"_id": 0}
+            ).to_list(200)
+            for rr in due:
+                await _send_review_request(rr, settings)
+    except Exception as e:
+        log.warning(f"[review.sweep] {e}")
+
+
+async def _schedule_review_request(order: dict):
+    """Create/refresh a review-request token for a delivered order + trigger a
+    send-sweep (sends immediately when the configured delay is 0). Idempotent."""
+    try:
+        settings = await _get_settings()
+        if not settings.get("reviews_enabled", True):
+            return
+        oid = order.get("order_id")
+        if not oid:
+            return
+        existing = await db.review_requests.find_one({"order_id": oid}, {"_id": 0})
+        if existing and existing.get("status") in ("sent", "submitted"):
+            return  # already handled — don't re-notify or reset
+        items = await _review_items_payload(order)
+        if not items:
+            return
+        now = datetime.now(timezone.utc)
+        delay = max(0, int(settings.get("review_request_delay_days", 1) or 0))
+        token = existing.get("token") if existing else _secrets.token_urlsafe(24)
+        await db.review_requests.update_one(
+            {"order_id": oid},
+            {"$set": {
+                "token": token, "order_id": oid, "user_id": order.get("user_id") or "",
+                "items": items, "send_after": now + timedelta(days=delay), "status": "scheduled",
+                "customer_name": (order.get("address") or {}).get("name") or "",
+                "phone": order.get("phone") or "",
+                "email": (order.get("address") or {}).get("email") or "",
+                "public_base_url": order.get("public_base_url") or "",
+                "created_at": (existing or {}).get("created_at") or now,
+            }},
+            upsert=True,
+        )
+        asyncio.create_task(_sweep_due_review_requests())
+    except Exception as e:
+        log.warning(f"[review.schedule] {e}")
+
+
+async def _review_sweep_loop():
+    """Periodic background sweep — sends review requests once their delay elapses."""
+    while True:
+        try:
+            await _sweep_due_review_requests()
+        except Exception:
+            pass
+        await asyncio.sleep(300)
+
+
+# ---------------- Public review endpoints (token-gated, no login) ----------------
+@api.get("/reviews/request/{token}")
+async def get_review_request(token: str):
+    rr = await db.review_requests.find_one({"token": token}, {"_id": 0})
+    if not rr:
+        raise HTTPException(404, "This review link is invalid or has expired.")
+    return {
+        "business_name": BRAND_NAME,
+        "customer_name": rr.get("customer_name") or "",
+        "items": rr.get("items", []),
+        "already_submitted": rr.get("status") == "submitted",
+    }
+
+
+class ReviewItemIn(BaseModel):
+    item_id: str
+    rating: int = Field(ge=1, le=5)
+    comment: Optional[str] = ""
+
+
+class ReviewSubmitReq(BaseModel):
+    token: str
+    reviews: List[ReviewItemIn]
+
+
+@api.post("/reviews/submit")
+async def submit_reviews(req: ReviewSubmitReq):
+    rr = await db.review_requests.find_one({"token": req.token}, {"_id": 0})
+    if not rr:
+        raise HTTPException(404, "This review link is invalid or has expired.")
+    # Idempotent + moderation-blind: the customer always sees "posted".
+    if rr.get("status") == "submitted":
+        return {"ok": True, "message": "Thanks! Your review has been posted."}
+    now = datetime.now(timezone.utc)
+    names = {i["item_id"]: i.get("name") for i in rr.get("items", [])}
+    valid = set(names.keys())
+    docs = []
+    for rv in req.reviews:
+        if rv.item_id not in valid:
+            continue
+        docs.append({
+            "review_id": f"rev_{uuid.uuid4().hex[:10]}",
+            "order_id": rr.get("order_id"),
+            "user_id": rr.get("user_id"),
+            "item_id": rv.item_id,
+            "item_name": names.get(rv.item_id) or rv.item_id,
+            "rating": int(rv.rating),
+            "comment": (rv.comment or "").strip()[:1000],
+            "customer_name": rr.get("customer_name") or "Verified customer",
+            "status": "pending",   # MODERATION — hidden until an admin approves
+            "source": "customer",
+            "created_at": now,
+        })
+    if docs:
+        await db.reviews.insert_many(docs)
+    await db.review_requests.update_one(
+        {"token": req.token}, {"$set": {"status": "submitted", "submitted_at": now}}
+    )
+    return {"ok": True, "message": "Thanks! Your review has been posted."}
+
+
+@api.get("/menu-items/{item_id}/reviews")
+async def item_reviews(item_id: str):
+    summary = (await _ratings_map([item_id])).get(item_id, {"avg_rating": 0, "review_count": 0})
+    rows = await db.reviews.find(
+        {"item_id": item_id, "status": "approved"},
+        {"_id": 0, "review_id": 1, "rating": 1, "comment": 1, "customer_name": 1, "created_at": 1},
+    ).sort("created_at", -1).to_list(300)
+    return {"item_id": item_id, **summary, "reviews": rows}
+
+
+@api.get("/reviews/summary")
+async def reviews_summary(item_ids: str):
+    ids = [i for i in (item_ids or "").split(",") if i]
+    return {"ratings": await _ratings_map(ids)}
+
+
+# ---------------- Admin review moderation + bulk upload ----------------
+@api.get("/admin/reviews")
+async def admin_list_reviews(status: str = "pending", admin=Depends(_current_admin)):
+    q: dict = {}
+    if status in ("pending", "approved", "rejected"):
+        q["status"] = status
+    rows = await db.reviews.find(q, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    counts = {}
+    for st in ("pending", "approved", "rejected"):
+        counts[st] = await db.reviews.count_documents({"status": st})
+    return {"reviews": rows, "counts": counts}
+
+
+class ReviewModerateReq(BaseModel):
+    action: str  # "approve" | "reject"
+
+
+@api.post("/admin/reviews/{review_id}/moderate")
+async def admin_moderate_review(review_id: str, req: ReviewModerateReq, admin=Depends(_current_admin)):
+    if req.action not in ("approve", "reject"):
+        raise HTTPException(400, "action must be 'approve' or 'reject'")
+    new_status = "approved" if req.action == "approve" else "rejected"
+    r = await db.reviews.update_one(
+        {"review_id": review_id},
+        {"$set": {"status": new_status, "moderated_at": datetime.now(timezone.utc)}},
+    )
+    if r.matched_count == 0:
+        raise HTTPException(404, "Review not found")
+    return {"ok": True, "status": new_status}
+
+
+@api.delete("/admin/reviews/{review_id}")
+async def admin_delete_review(review_id: str, admin=Depends(_current_admin)):
+    r = await db.reviews.delete_one({"review_id": review_id})
+    if r.deleted_count == 0:
+        raise HTTPException(404, "Review not found")
+    return {"ok": True}
+
+
+@api.post("/admin/reviews/bulk-upload")
+async def admin_bulk_upload_reviews(file: UploadFile = File(...), admin=Depends(_current_admin)):
+    """Bulk-import historical reviews from a CSV. Header row required. Columns:
+    item_id OR item_name, rating (1-5), comment, customer_name, created_at(optional).
+    Imported reviews are APPROVED immediately (source=admin_bulk)."""
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except Exception:
+        text = raw.decode("latin-1", errors="ignore")
+    reader = _csv.DictReader(_io.StringIO(text))
+    # master menu lookups (name→id and id→name)
+    name_to_id: Dict[str, str] = {}
+    id_to_name: Dict[str, str] = {}
+    async for m in db.master_menu.find({}, {"_id": 0, "item_id": 1, "name": 1}):
+        id_to_name[m["item_id"]] = m.get("name") or m["item_id"]
+        name_to_id[(m.get("name") or "").strip().lower()] = m["item_id"]
+    now = datetime.now(timezone.utc)
+    docs = []
+    errors: List[str] = []
+    for idx, row in enumerate(reader, start=2):
+        row = {(k or "").strip().lower(): (v or "").strip() for k, v in row.items()}
+        iid = row.get("item_id") or ""
+        iname = row.get("item_name") or row.get("name") or ""
+        if not iid and iname:
+            iid = name_to_id.get(iname.lower(), "")
+        if not iid or iid not in id_to_name:
+            errors.append(f"Row {idx}: unknown item '{iname or row.get('item_id') or '?'}'")
+            continue
+        try:
+            rating = int(float(row.get("rating") or 0))
+        except ValueError:
+            rating = 0
+        if not (1 <= rating <= 5):
+            errors.append(f"Row {idx}: rating must be 1-5")
+            continue
+        docs.append({
+            "review_id": f"rev_{uuid.uuid4().hex[:10]}",
+            "order_id": None, "user_id": None,
+            "item_id": iid,
+            "item_name": iname or id_to_name.get(iid, iid),
+            "rating": rating,
+            "comment": (row.get("comment") or "")[:1000],
+            "customer_name": row.get("customer_name") or "Customer",
+            "status": "approved",   # historical reviews go live immediately
+            "source": "admin_bulk",
+            "created_at": now,
+        })
+    if docs:
+        await db.reviews.insert_many(docs)
+    return {"ok": True, "inserted": len(docs), "error_count": len(errors), "errors": errors[:50]}
+
+
 # --- Register router
 app.include_router(api)
 
@@ -6465,6 +6842,13 @@ async def _startup():
         await db.master_menu.create_index("item_id", unique=True)
         await db.master_menu.create_index([("category", 1), ("cuisine", 1)])
         await db.business_settings.create_index("key", unique=True)
+        # Reviews + review-request tokens
+        await db.reviews.create_index("review_id", unique=True)
+        await db.reviews.create_index([("item_id", 1), ("status", 1)])
+        await db.reviews.create_index("status")
+        await db.review_requests.create_index("token", unique=True)
+        await db.review_requests.create_index("order_id", unique=True)
+        await db.review_requests.create_index([("status", 1), ("send_after", 1)])
         # Export download tokens: unique-token lookup only. Expiration is
         # enforced LAZILY on read/create instead of via a MongoDB TTL — this
         # keeps startup non-destructive (no auto-hard-delete of user data by
@@ -6524,6 +6908,12 @@ async def _startup():
         start_platform_poller()
     except Exception as _plat_err:
         log.warning(f"platform poller start skipped: {_plat_err}")
+
+    # Background sweep: send review-request links once their delay elapses.
+    try:
+        asyncio.create_task(_review_sweep_loop())
+    except Exception as _rev_err:
+        log.warning(f"review sweep start skipped: {_rev_err}")
 
 
 @app.on_event("shutdown")

@@ -350,3 +350,21 @@ Bug: applying an unusable coupon (first-order-only after already ordering, inval
 ---
 ## Coupon redemptions view (2026-06)
 Admin → Coupons: each coupon card has a new "Redemptions" button opening a modal listing customers who used it. Backend `GET /api/admin/coupons/{code}/redemptions` (admin-gated) queries non-cancelled orders with that `coupon_code`, joins `users` for name/email, returns rows (name, email, phone, order_id, discount_cents, total_cents, status, created_at) + summary (count, unique_customers, total_discount_cents). Frontend `admin/coupons.tsx` shows summary header + scrollable list. Verified via curl (WELCOME20 → 4 redemptions, 401 unauth) + admin UI screenshot. web_dist refreshed, bundle_matches_source true.
+
+---
+## Review Management System (2026-06)
+Spec (user choices 1b/2a/3b/4b): delivery-triggered, token link no-login, moderated-but-customer-blind, CSV bulk upload, stars + optional comment.
+- **Backend** (`server.py`, REVIEWS block before include_router): new collections `reviews` {review_id, order_id, user_id, item_id, item_name, rating(1-5), comment, customer_name, status(pending|approved|rejected), source(customer|admin_bulk), created_at} and `review_requests` {token, order_id, user_id, items[], send_after, status(scheduled|sent|submitted), customer_name, phone, email, public_base_url}.
+  - `_schedule_review_request(order)` fires from BOTH delivered hooks: delivery-partner `POST /delivery/orders/{id}/status` (status=delivered) and admin `POST /orders/{id}/status` (status=delivered). Creates/refreshes a token, `send_after = delivered + review_request_delay_days`. Idempotent (skips if already sent/submitted).
+  - Background `_review_sweep_loop()` (300s) + immediate `asyncio.create_task(_sweep_due_review_requests())` on schedule. Sends the token link via Email (Resend) + SMS (Twilio owner settings). `delay_days=0` sends on next sweep (~immediate).
+  - Public: `GET /api/reviews/request/{token}`, `POST /api/reviews/submit` (stores status=pending — MODERATION; always returns generic "posted"; idempotent), `GET /api/menu-items/{item_id}/reviews` (approved only), `GET /api/reviews/summary?item_ids=a,b`.
+  - Admin: `GET /api/admin/reviews?status=`, `POST /api/admin/reviews/{id}/moderate` (approve|reject), `DELETE /api/admin/reviews/{id}`, `POST /api/admin/reviews/bulk-upload` (CSV: item_id|item_name,rating,comment,customer_name → approved, source=admin_bulk; errors[] for bad rows).
+  - Menu enrichment: `_hydrate_menu` + `/menu/anytime` items now carry `avg_rating` + `review_count` (approved only, via `_attach_ratings`/`_ratings_map` aggregation).
+  - `BusinessSettings`: `reviews_enabled` (default True) + `review_request_delay_days` (default 1). Public `/settings` exposes `reviews_enabled`. Startup indexes for reviews + review_requests.
+- **Frontend**:
+  - `app/review/[token].tsx` — public no-login page: dish cards (image + name), 1-5 star selector + optional comment, submit → customer-blind success screen. Registered in `app/_layout.tsx`.
+  - `app/admin/reviews.tsx` — Pending/Approved/Rejected tabs (counts), approve/reject/delete, CSV bulk upload via `expo-document-picker` (multipart fetch). Added to `AdminShell` nav + `admin/_layout.tsx`.
+  - `src/components/ItemReviews.tsx` — `RatingBadge` + `ReviewsModal`; wired into customer Menu tab (à la carte + Always Available rows show pill + "See reviews").
+  - `app/admin/settings.tsx` — Reviews section (enable toggle + delay-days field).
+- Verified: testing_agent iteration_13 — backend 27/27 pytest (`tests/test_reviews_iteration13.py`) incl. delivered-trigger end-to-end + moderation-hides-pending + CSV; frontend 5/5 UI flows. No functional bugs. Smoke test `tests/test_reviews_smoke.py`.
+

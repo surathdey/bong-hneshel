@@ -11,8 +11,9 @@ import { api } from "@/src/api";
 import { mediaUrl } from "@/src/utils/backendUrl";
 import { colors, spacing, radius, shadows } from "@/src/theme";
 import { centsToCAD } from "@/src/utils/format";
+import { RatingBadge, ReviewsModal } from "@/src/components/ItemReviews";
 
-type MenuItem = { item_id: string; name: string; description: string; price_cents: number; image_url: string; category: string; tags: string[]; is_featured: boolean; veg_type?: string; };
+type MenuItem = { item_id: string; name: string; description: string; price_cents: number; image_url: string; category: string; tags: string[]; is_featured: boolean; veg_type?: string; avg_rating?: number; review_count?: number; };
 type WeeklyPackage = {
   package_id?: string; name: string; description?: string; price_cents: number;
   pick_count: number; eligible_master_ids: string[]; image_url?: string;
@@ -56,6 +57,7 @@ export default function MenuTab() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [mode, setMode] = useState<Mode>("alacarte");
+  const [reviewItem, setReviewItem] = useState<{ id: string; name: string } | null>(null);
   const { add, count } = useCart();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -153,7 +155,7 @@ export default function MenuTab() {
               </Text>
             </View>
           )}
-          <AnytimeSection items={anytime} onAdd={(it) => add({ kind: "menu", ref_id: it.item_id, name: it.name, price_cents: it.price_cents, image_url: it.image_url })} />
+          <AnytimeSection items={anytime} onAdd={(it) => add({ kind: "menu", ref_id: it.item_id, name: it.name, price_cents: it.price_cents, image_url: it.image_url })} onOpenReviews={(it) => setReviewItem({ id: it.item_id, name: it.name })} />
         </ScrollView>
       ) : (
         <FlatList
@@ -162,7 +164,7 @@ export default function MenuTab() {
           keyExtractor={i => i.item_id}
           contentContainerStyle={{ padding: spacing.lg, paddingBottom: 140 + insets.bottom, gap: spacing.md }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-          ListFooterComponent={<AnytimeSection items={anytime} onAdd={(it) => add({ kind: "menu", ref_id: it.item_id, name: it.name, price_cents: it.price_cents, image_url: it.image_url })} />}
+          ListFooterComponent={<AnytimeSection items={anytime} onAdd={(it) => add({ kind: "menu", ref_id: it.item_id, name: it.name, price_cents: it.price_cents, image_url: it.image_url })} onOpenReviews={(it) => setReviewItem({ id: it.item_id, name: it.name })} />}
           renderItem={({ item }) => (
             <View style={styles.row} testID={`menu-row-${item.item_id}`}>
               <Image source={{ uri: mediaUrl(item.image_url) }} style={styles.rowImg} />
@@ -173,6 +175,12 @@ export default function MenuTab() {
                   {item.is_featured && <View style={styles.tagFeat}><Text style={styles.tagFeatText}>SIGNATURE</Text></View>}
                 </View>
                 <Text style={styles.rowDesc} numberOfLines={2}>{item.description}</Text>
+                {(item.review_count ?? 0) > 0 && (
+                  <TouchableOpacity testID={`menu-reviews-${item.item_id}`} style={styles.reviewLink} onPress={() => setReviewItem({ id: item.item_id, name: item.name })}>
+                    <RatingBadge avg={item.avg_rating} count={item.review_count} />
+                    <Text style={styles.reviewLinkText}>See reviews</Text>
+                  </TouchableOpacity>
+                )}
                 <View style={styles.rowFoot}>
                   <Text style={styles.rowPrice}>{centsToCAD(item.price_cents)}</Text>
                   <TouchableOpacity
@@ -190,6 +198,12 @@ export default function MenuTab() {
           ListEmptyComponent={<Text style={{ textAlign: "center", color: colors.textMuted, marginTop: 40 }}>No items available this week.</Text>}
         />
       )}
+      <ReviewsModal
+        itemId={reviewItem?.id ?? null}
+        itemName={reviewItem?.name ?? ""}
+        visible={!!reviewItem}
+        onClose={() => setReviewItem(null)}
+      />
     </View>
   );
 }
@@ -259,7 +273,7 @@ export function PackageHero({ pkg, weeklyMenu, eligibleCount, onOpen }: {
   );
 }
 
-function AnytimeSection({ items, onAdd }: { items: MenuItem[]; onAdd: (it: MenuItem) => void; }) {
+function AnytimeSection({ items, onAdd, onOpenReviews }: { items: MenuItem[]; onAdd: (it: MenuItem) => void; onOpenReviews?: (it: MenuItem) => void; }) {
   if (!items || items.length === 0) return null;
   return (
     <View style={styles.anytimeWrap} testID="menu-anytime">
@@ -277,6 +291,12 @@ function AnytimeSection({ items, onAdd }: { items: MenuItem[]; onAdd: (it: MenuI
               <Text style={styles.rowName} numberOfLines={1}>{it.name}</Text>
             </View>
             <Text style={styles.rowDesc} numberOfLines={2}>{it.description}</Text>
+            {(it.review_count ?? 0) > 0 && (
+              <TouchableOpacity testID={`anytime-reviews-${it.item_id}`} style={styles.reviewLink} onPress={() => onOpenReviews?.(it)}>
+                <RatingBadge avg={it.avg_rating} count={it.review_count} />
+                <Text style={styles.reviewLinkText}>See reviews</Text>
+              </TouchableOpacity>
+            )}
             <View style={styles.rowFoot}>
               <Text style={styles.rowPrice}>{centsToCAD(it.price_cents)}</Text>
               <TouchableOpacity testID={`anytime-add-${it.item_id}`} style={styles.addBtn} onPress={() => onAdd(it)}>
@@ -326,6 +346,8 @@ const styles = StyleSheet.create({
   rowName: { fontSize: 15, fontWeight: "700", color: colors.text, flexShrink: 1 },
   rowDesc: { color: colors.textMuted, fontSize: 12, lineHeight: 16 },
   rowFoot: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
+  reviewLink: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
+  reviewLinkText: { fontSize: 12, color: colors.primary, fontWeight: "700" },
   rowPrice: { color: colors.primary, fontWeight: "800", fontSize: 16 },
   addBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.pill },
   addText: { color: "#fff", fontSize: 12, fontWeight: "700" },
