@@ -60,6 +60,7 @@ bong-hneshel/
 │   │   │   └── profile.tsx       #    Profile + Delete Account
 │   │   ├── admin/                # 🖥️ Admin Web Portal pages (see table below)
 │   │   ├── menu/[id].tsx         # Weekly-package picker
+│   │   ├── review/[token].tsx    # Public token-gated post-delivery review page (no login)
 │   │   ├── catering/[id].tsx     # Catering customizer
 │   │   ├── order/[id].tsx        # Live order tracking
 │   │   ├── legal/privacy.tsx     # Privacy policy
@@ -108,6 +109,7 @@ bong-hneshel/
 - **Live order tracking** — zoomable Google map (WebView/iframe), driver avatar + call button, "N stops away · ~X–Y min" smart ETA, vertical status timeline, proof-of-delivery photo.
 - **Loyalty rewards** — earn points per $1 on paid orders; redeem in increments for $ off. Checkout **loyalty gate** nudges phone-less members to add a number.
 - **Coupons** — percent / fixed, min-order threshold, first-order-only (e.g. `WELCOME20` = 20% off).
+- **Post-delivery reviews & dish ratings** — a set time after an order is delivered (configurable in Admin → Settings, default 1 day), the customer is texted **and** emailed a secure **token link (no login needed)** to rate the exact dishes they ordered — **1–5 stars + optional comment**. Submitted reviews are held for admin approval **without telling the customer** (they always see _"Thanks! Your review has been posted"_). Approved reviews then surface as **★ rating pills** on Home (Chef's Featured, This week's table, Always Available) and on the Menu tab, where tapping **"See reviews"** opens a reviews list per dish.
 
 ### 🚗 Delivery Partner App
 - Separate login (JWT). Seeded demo partner "Rahul Das".
@@ -125,11 +127,12 @@ bong-hneshel/
 | `master-menu` | Single source of truth — all dishes with AI descriptions + AI food photos |
 | `menu` | Weekly-menu builder (À la carte / Weekly Package / Complimentary / Always Available tabs, pricing modes) |
 | `catering` | Catering package configurator v2 (choice groups, tiers, premium add-ons) |
-| `coupons` | Full CRUD for discount coupons (percent/fixed, first-order-only rule) |
+| `coupons` | Full CRUD for discount coupons (percent/fixed, first-order-only rule); **Redemptions viewer** lists exactly which customers used each coupon |
+| `reviews` | Moderation queue for post-delivery reviews — Pending / Approved / Rejected tabs, one-tap approve / reject / delete, and **CSV bulk-upload** of historical reviews (go live immediately) |
 | `referrals` | Referral leaderboard — top referrers ranked by friends who ordered, with invited/ordered/points totals |
 | `customers` | Customer list |
 | `delivery` | Delivery-partner onboarding + order assignment (auto-polls) |
-| `settings` | Payment methods, per-method HST, tax, loyalty rates, **referral rewards** (referrer points + friend discount %/$), Twilio/notification config |
+| `settings` | Payment methods, per-method HST, tax, loyalty rates, **referral rewards** (referrer points + friend discount %/$), **reviews** (enable toggle + days-after-delivery delay), Twilio/notification config |
 | `billing` | Billing / platform tenant info |
 | **New Order** modal | Manually place an order on behalf of a customer (search/inline-add customer, items, delivery, payment, optional driver) |
 
