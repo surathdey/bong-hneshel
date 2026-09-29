@@ -87,8 +87,11 @@ export function AddressAutocomplete({
   }, [value, focused]);
 
   // Wraps the parent onChangeText for the TextInput so we can flag user typing.
+  // Also force `focused` on: on web the input can keep DOM focus after a pick,
+  // so a fresh onFocus event may never fire when the user edits again.
   const handleUserType = (t: string) => {
     userEditedRef.current = true;
+    if (!focused) setFocused(true);
     onChangeText(t);
   };
 
