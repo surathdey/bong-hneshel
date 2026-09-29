@@ -55,20 +55,23 @@ export function AddressAutocomplete({
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
-  const [suppressNextFetch, setSuppressNextFetch] = useState(false);
   const sessionRef = useRef<string>(newSessionToken());
   const debounceRef = useRef<any>(null);
   const lastQueryRef = useRef<string>("");
+  // Only search when the text change came from the USER typing — never from a
+  // programmatic value update (e.g. the parent injecting the picked address,
+  // which previously re-opened the dropdown and blocked selection).
+  const userEditedRef = useRef(false);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    // Skip the round-trip right after user picks a suggestion (we just injected the address).
-    if (suppressNextFetch) { setSuppressNextFetch(false); return; }
     if (!focused) return;
+    if (!userEditedRef.current) return;
     const q = (value || "").trim();
     if (q.length < 3) { setPredictions([]); setOpen(false); return; }
     if (q === lastQueryRef.current) return;
     debounceRef.current = setTimeout(async () => {
+      userEditedRef.current = false;
       lastQueryRef.current = q;
       setLoading(true);
       const r = await api.get<{ predictions: Prediction[] }>(`/places/autocomplete?q=${encodeURIComponent(q)}&session_token=${sessionRef.current}`);
@@ -81,14 +84,21 @@ export function AddressAutocomplete({
       }
     }, 260);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [value, focused, suppressNextFetch]);
+  }, [value, focused]);
+
+  // Wraps the parent onChangeText for the TextInput so we can flag user typing.
+  const handleUserType = (t: string) => {
+    userEditedRef.current = true;
+    onChangeText(t);
+  };
 
   const pick = async (p: Prediction) => {
     // Fill the input with a nice human string right away for instant feedback.
+    userEditedRef.current = false;
     onChangeText(p.description);
     setOpen(false);
     setPredictions([]);
-    setSuppressNextFetch(true);
+    setFocused(false);
     lastQueryRef.current = p.description;
     setLoading(true);
     const r = await api.get<{ ok: boolean; address: StructuredAddress }>(`/places/details?place_id=${encodeURIComponent(p.place_id)}&session_token=${sessionRef.current}`);
@@ -116,7 +126,7 @@ export function AddressAutocomplete({
         <TextInput
           testID={testID}
           value={value}
-          onChangeText={onChangeText}
+          onChangeText={handleUserType}
           onFocus={() => setFocused(true)}
           onBlur={() => {
             // Small delay so a tap on a suggestion registers first.
