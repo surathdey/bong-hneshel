@@ -5,7 +5,11 @@ sys.path.insert(0, "/app/backend")
 from dotenv import load_dotenv
 load_dotenv("/app/backend/.env")
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+try:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+except ImportError:
+    LlmChat = None
+    UserMessage = None
 
 async def gen(prompt: str, out_path: Path):
     chat = LlmChat(

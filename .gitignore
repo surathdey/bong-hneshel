@@ -1,24 +1,53 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ==========================================
+# Environment & Secrets (High Security)
+# ==========================================
+.env
+.env.*
+*.env
+*.env.local
+*.pem
+*.key
+*token.json*
+*credentials.json*
+.credentials
+memory/test_credentials.md
 
-# IDE and editors
-.idea/
-.vscode/
+# Allow example / template files only
+!.env.example
+!backend/.env.example
+!frontend/.env.example
 
-# Dependencies
-node_modules
-/node_modules
-# EXCEPTION: the Expo web export bundles some vendored assets under
-# `web_dist/assets/node_modules/…` (icon fonts, back-arrow PNGs, etc.).
-# These MUST ship to production so /assets/*.ttf and /assets/*.png resolve.
-# NOTE: gitignore cannot re-include a file whose PARENT DIR is excluded — so
-# we must un-ignore every intermediate directory AS WELL as the leaf files.
-!backend/web_dist/**
-!backend/web_dist/**/node_modules
-!backend/web_dist/**/node_modules/**
-!frontend/dist/**
-!frontend/dist/**/node_modules
-!frontend/dist/**/node_modules/**
-/.pnp
+# ==========================================
+# Python
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ==========================================
+# Logs & Process IDs
+# ==========================================
+*.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.pid
+.backend.pid
+dump.rdb
+
+# ==========================================
+# Node / Expo / Next.js
+# ==========================================
+node_modules/
+/node_modules/
+.pnp
 .pnp.js
 .yarn/install-state.gz
 .yarn/*
@@ -27,65 +56,44 @@ node_modules
 !.yarn/releases
 !.yarn/versions
 
-# Testing
-/coverage
+# Expo & Web Dist Exception Handling
+!backend/web_dist/**
+!backend/web_dist/**/node_modules
+!backend/web_dist/**/node_modules/**
+!frontend/dist/**
+!frontend/dist/**/node_modules
+!frontend/dist/**/node_modules/**
 
-# Next.js
+.expo/
 /.next/
 /out/
+/build
 next-env.d.ts
 *.tsbuildinfo
+.cache/
 
-# Production builds
-/build
-# Build output
-# Note: /app/frontend/dist is intentionally NOT ignored — the Expo web export
-# lives there and MUST be committed so the K8s deployment serves the admin webapp.
-# Only the Expo Router build cache is ignored.
-.expo/
-
-# Environment files (comprehensive coverage)
-# NOTE: We DO NOT ignore backend/.env or frontend/.env because Emergent deploy
-# needs these files present in the deploy context. Secrets are injected by
-# Emergent from the deploy panel — the actual .env file is used to declare which
-# keys the app expects.
-!backend/.env
-!frontend/.env
-!.env.example
-*.env.local
-*token.json*
-*credentials.json*
-
-# Logs and debug files
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-dump.rdb
-
-# System files
+# ==========================================
+# IDEs & System Files
+# ==========================================
 .DS_Store
-*.pem
-
-# Python
-__pycache__/
-*pyc*
-venv/
-.venv/
-
-# Development tools
-chainlit.md
-.chainlit
+.idea/
+.vscode/
+.vercel
 .ipynb_checkpoints/
 .ac
+chainlit.md
+.chainlit
 
-# Deployment
-.vercel
+# ==========================================
+# Testing & Reports
+# ==========================================
+/coverage
+test_reports/
+/tests/output/
 
-# Data and databases
-agenthub/agents/youtube/db
-
-# Archive files and large assets
+# ==========================================
+# Large Archives
+# ==========================================
 **/*.zip
 **/*.tar.gz
 **/*.tar
@@ -93,27 +101,3 @@ agenthub/agents/youtube/db
 *.pack
 *.deb
 *.dylib
-
-# Build caches
-.cache/
-
-memory/test_credentials.md
-test_reports/
-/tests/output/
-
-# Mobile development
-android-sdk/
-credentials.json
-*.key
-.credentials
-
-# ---- Env files - final exclusion with explicit exceptions -----------
-# We ignore stray env files (.env.local, dev secrets, etc.) but the deploy
-# pipeline MUST see backend/.env and frontend/.env, so we re-include them
-# AFTER the broad ignore so gitignore's "last matching rule wins" behaves.
-.env
-.env.*
-*.env
-!backend/.env
-!frontend/.env
-!.env.example

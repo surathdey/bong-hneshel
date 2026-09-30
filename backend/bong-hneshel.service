@@ -1,0 +1,19 @@
+[Unit]
+Description=Bong Hneshel FastAPI Backend Service
+After=network.target mongod.service
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/app/restaurant/bong-hneshel/backend
+ExecStart=/app/restaurant/bong-hneshel/backend/.venv/bin/uvicorn server:app --host 0.0.0.0 --port 8002
+Restart=always
+RestartSec=5
+EnvironmentFile=/app/restaurant/bong-hneshel/backend/.env
+
+# Logging
+StandardOutput=append:/app/restaurant/bong-hneshel/backend/backend.log
+StandardError=append:/app/restaurant/bong-hneshel/backend/backend.log
+
+[Install]
+WantedBy=multi-user.target

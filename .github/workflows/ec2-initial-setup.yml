@@ -1,0 +1,169 @@
+name: 🛠️ EC2 Initial Setup & MongoDB Provisioning
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed_database:
+        description: 'Run initial database seeding (seed_bong_products.py)'
+        required: true
+        type: boolean
+        default: true
+      mongo_port:
+        description: 'MongoDB Port'
+        required: false
+        type: string
+        default: '27018'
+
+jobs:
+  provision:
+    name: Provision EC2 & Setup MongoDB
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY || secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p "${{ secrets.EC2_PORT || '22' }}" -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Create Remote Directory Structure
+        run: |
+          ssh -p ${{ secrets.EC2_PORT || '22' }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+            sudo mkdir -p /app/restaurant/bong-hneshel/backend/uploads
+            sudo mkdir -p /app/restaurant/bong-hneshel/backend/scripts
+            sudo mkdir -p /app/restaurant/bong-hneshel/backend/tools
+            sudo mkdir -p /app/restaurant/bong-hneshel/backend/web_dist
+            sudo chown -R ${{ secrets.EC2_USER }}:${{ secrets.EC2_USER }} /app/restaurant/bong-hneshel
+          "
+
+      - name: Install & Configure MongoDB on EC2
+        run: |
+          ssh -p ${{ secrets.EC2_PORT || '22' }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+            if ! command -v mongod &> /dev/null; then
+              echo '📦 Installing MongoDB...'
+              if [ -f /etc/os-release ]; then
+                . /etc/os-release
+                if [[ \"\$ID\" == \"amzn\" ]] || [[ \"\$ID_LIKE\" =~ \"rhel\" ]]; then
+                  sudo tee /etc/yum.repos.d/mongodb-org-7.0.repo << 'EOF'
+          [mongodb-org-7.0]
+          name=MongoDB Repository
+          baseurl=https://repo.mongodb.org/yum/amazon/2023/mongodb-org/7.0/x86_64/
+          gpgcheck=1
+          enabled=1
+          gpgkey=https://pgp.mongodb.com/server-7.0.asc
+          EOF
+                  sudo dnf install -y mongodb-org || sudo yum install -y mongodb-org
+                elif [[ \"\$ID\" == \"ubuntu\" ]] || [[ \"\$ID_LIKE\" =~ \"debian\" ]]; then
+                  sudo apt-get update && sudo apt-get install -y gnupg curl
+                  curl -fsSL https://pgp.mongodb.com/server-7.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
+                  echo 'deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse' | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+                  sudo apt-get update && sudo apt-get install -y mongodb-org
+                fi
+              fi
+            else
+              echo '✅ MongoDB binary already installed.'
+            fi
+
+            # Configure port in /etc/mongod.conf if needed
+            if [ \"${{ inputs.mongo_port }}\" != \"27017\" ] && [ -f /etc/mongod.conf ]; then
+              sudo sed -i 's/port: 27017/port: ${{ inputs.mongo_port }}/g' /etc/mongod.conf || true
+            fi
+
+            # Enable and start MongoDB service
+            sudo systemctl enable mongod
+            sudo systemctl restart mongod
+            echo 'MongoDB status:'
+            sudo systemctl status mongod --no-pager
+          "
+
+      - name: Sync Initial Backend Files
+        run: |
+          rsync -avz -e "ssh -p ${{ secrets.EC2_PORT || '22' }}" \
+            --exclude '.venv' \
+            --exclude '__pycache__' \
+            --exclude '.env' \
+            backend/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/app/restaurant/bong-hneshel/backend/
+
+          if [ -f brand.json ]; then
+            scp -P ${{ secrets.EC2_PORT || '22' }} brand.json ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/app/restaurant/bong-hneshel/
+            scp -P ${{ secrets.EC2_PORT || '22' }} brand.json ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/app/restaurant/bong-hneshel/backend/
+          fi
+
+      - name: Write .env Configuration
+        run: |
+          ssh -p ${{ secrets.EC2_PORT || '22' }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "cat > /app/restaurant/bong-hneshel/backend/.env << 'EOF'
+          ${{ secrets.BACKEND_ENV }}
+          EOF"
+          ssh -p ${{ secrets.EC2_PORT || '22' }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "chmod 600 /app/restaurant/bong-hneshel/backend/.env"
+
+      - name: Bootstrap Python Virtual Environment & Dependencies
+        run: |
+          ssh -p ${{ secrets.EC2_PORT || '22' }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+            cd /app/restaurant/bong-hneshel/backend
+            if ! command -v python3 &> /dev/null; then
+              if command -v dnf &> /dev/null; then
+                sudo dnf install -y python3 python3-pip
+              else
+                sudo apt-get update && sudo apt-get install -y python3 python3-pip python3-venv
+              fi
+            fi
+            python3 -m venv .venv
+            .venv/bin/pip install --upgrade pip
+            .venv/bin/pip install -r requirements.txt
+            chmod +x start.sh stop.sh run.sh
+          "
+
+      - name: Setup & Enable Systemd Service
+        run: |
+          ssh -p ${{ secrets.EC2_PORT || '22' }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+            sudo tee /etc/systemd/system/bong-hneshel.service > /dev/null << 'EOF'
+          [Unit]
+          Description=Bong Hneshel FastAPI Backend Service
+          After=network.target mongod.service
+
+          [Service]
+          Type=simple
+          User=${{ secrets.EC2_USER }}
+          WorkingDirectory=/app/restaurant/bong-hneshel/backend
+          ExecStart=/app/restaurant/bong-hneshel/backend/.venv/bin/uvicorn server:app --host 0.0.0.0 --port 8002
+          Restart=always
+          RestartSec=5
+          EnvironmentFile=/app/restaurant/bong-hneshel/backend/.env
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+            sudo systemctl daemon-reload
+            sudo systemctl enable bong-hneshel
+            sudo systemctl restart bong-hneshel
+          "
+
+      - name: Seed Database (Optional)
+        if: ${{ inputs.seed_database }}
+        run: |
+          ssh -p ${{ secrets.EC2_PORT || '22' }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+            cd /app/restaurant/bong-hneshel/backend
+            if [ -f seed_bong_products.py ]; then
+              echo '🌱 Seeding MongoDB collections...'
+              .venv/bin/python seed_bong_products.py || true
+            fi
+          "
+
+      - name: Verify Backend Health
+        run: |
+          ssh -p ${{ secrets.EC2_PORT || '22' }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+            for i in {1..15}; do
+              if curl -s -f http://127.0.0.1:8002/health; then
+                echo '🎉 Initial Provisioning & Startup Succeeded!'
+                exit 0
+              fi
+              echo 'Waiting for backend on port 8002 (attempt \$i)...'
+              sleep 2
+            done
+            echo '❌ Health check failed after initial setup'
+            exit 1
+          "

@@ -19,10 +19,12 @@ import os
 from pathlib import Path
 from typing import Any, Dict
 
-# ---------------------------------------------------------------------------
-# 1. Try to load brand.json from the repo root, one level above /backend.
+# 1. Try to load brand.json from the repo root, one level above /backend, or local backend dir.
 _ROOT = Path(__file__).resolve().parent.parent
 _BRAND_JSON = _ROOT / "brand.json"
+if not _BRAND_JSON.exists():
+    _BRAND_JSON = Path(__file__).resolve().parent / "brand.json"
+
 
 _defaults: Dict[str, Any] = {
     "key": "curryandco",

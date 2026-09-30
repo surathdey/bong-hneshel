@@ -1,0 +1,82 @@
+name: 🚀 Deploy Python Backend to EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'brand.json'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Sync Python Code & Reload Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY || secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p "${{ secrets.EC2_PORT || '22' }}" -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Sync Python Backend Code
+        run: |
+          # Sync only backend code, scripts, clients, and assets
+          rsync -avz -e "ssh -p ${{ secrets.EC2_PORT || '22' }}" \
+            --exclude '.venv' \
+            --exclude '__pycache__' \
+            --exclude '.env' \
+            --exclude 'uploads/' \
+            --exclude '*.log' \
+            --exclude '.backend.pid' \
+            backend/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/app/restaurant/bong-hneshel/backend/
+
+          if [ -f brand.json ]; then
+            scp -P ${{ secrets.EC2_PORT || '22' }} brand.json ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/app/restaurant/bong-hneshel/
+            scp -P ${{ secrets.EC2_PORT || '22' }} brand.json ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/app/restaurant/bong-hneshel/backend/
+          fi
+
+      - name: Update Dependencies & Restart Service
+        run: |
+          ssh -p ${{ secrets.EC2_PORT || '22' }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+            cd /app/restaurant/bong-hneshel/backend
+            
+            # Install / upgrade any changed dependencies
+            if [ -f requirements.txt ] && [ -d .venv ]; then
+              .venv/bin/pip install -r requirements.txt
+            fi
+
+            chmod +x start.sh stop.sh run.sh 2>/dev/null || true
+
+            # Gracefully restart backend
+            if sudo systemctl is-active --quiet bong-hneshel || sudo systemctl is-enabled --quiet bong-hneshel; then
+              echo '🔄 Restarting bong-hneshel systemd service...'
+              sudo systemctl restart bong-hneshel
+            else
+              echo '🔄 Restarting via shell scripts...'
+              ./stop.sh || true
+              ./start.sh
+            fi
+          "
+
+      - name: Health Check Verification
+        run: |
+          sleep 4
+          ssh -p ${{ secrets.EC2_PORT || '22' }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+            for i in {1..10}; do
+              if curl -s -f http://127.0.0.1:8002/health; then
+                echo '✅ Deployment complete! Backend is healthy and responding.'
+                exit 0
+              fi
+              echo 'Waiting for backend to respond (attempt \$i)...'
+              sleep 2
+            done
+            echo '❌ Health check failed after deployment'
+            exit 1
+          "
