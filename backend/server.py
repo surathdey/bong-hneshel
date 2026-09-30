@@ -128,7 +128,7 @@ async def _root():
 
 
 # --- Uploaded images (AI-generated menu photos, etc.) served under /api/uploads/*
-UPLOADS_DIR = Path("/app/backend/uploads")
+UPLOADS_DIR = Path(os.environ.get("UPLOADS_DIR", ROOT_DIR / "uploads"))
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 (UPLOADS_DIR / "menu").mkdir(parents=True, exist_ok=True)
 (UPLOADS_DIR / "delivery").mkdir(parents=True, exist_ok=True)
@@ -137,16 +137,16 @@ app.mount("/api/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads
 # ---------------------------------------------------------------
 # SPA static serving — production + preview.
 # The Expo web bundle can live in one of two locations:
-#   1. /app/backend/web_dist/       (production — bundled inside backend so it
-#                                    ships with the K8s image regardless of
+#   1. ROOT_DIR/web_dist/           (production — bundled inside backend so it
+#                                    ships with the image regardless of
 #                                    whether the frontend directory is copied)
-#   2. /app/frontend/dist/          (preview — created by `expo export` during
+#   2. ROOT_DIR/../frontend/dist/   (preview — created by `expo export` during
 #                                    local dev / `yarn install` postinstall)
 # We prefer (1) so production always has a working admin webapp. Any refresh
 # in preview automatically re-syncs (1) via the sync helper below.
 # ---------------------------------------------------------------
-_WEB_DIST_PROD = Path("/app/backend/web_dist")
-_WEB_DIST_PREVIEW = Path("/app/frontend/dist")
+_WEB_DIST_PROD = Path(os.environ.get("WEB_DIST_DIR", ROOT_DIR / "web_dist"))
+_WEB_DIST_PREVIEW = ROOT_DIR.parent / "frontend" / "dist"
 
 def _resolve_web_dist() -> Optional[Path]:
     for p in (_WEB_DIST_PROD, _WEB_DIST_PREVIEW):
@@ -5965,8 +5965,7 @@ async def download_pitch_deck():
 
     Public — no auth required so it can be shared with prospects directly.
     """
-    from pathlib import Path
-    pdf_path = Path("/app/exports/CurryCo_Sales_Pitch.pdf")
+    pdf_path = ROOT_DIR.parent / "exports" / "CurryCo_Sales_Pitch.pdf"
     if not pdf_path.exists():
         raise HTTPException(404, "Pitch deck not generated yet.")
     return FileResponse(
@@ -5979,8 +5978,7 @@ async def download_pitch_deck():
 @api.get("/legal/privacy")
 async def public_privacy_policy():
     """Publicly-hosted Privacy Policy + Terms — used by Apple/Google store metadata."""
-    from pathlib import Path
-    p = Path("/app/exports/privacy.html")
+    p = ROOT_DIR.parent / "exports" / "privacy.html"
     if not p.exists():
         raise HTTPException(404, "Privacy policy not found.")
     return FileResponse(path=str(p), media_type="text/html")
@@ -5994,7 +5992,7 @@ async def health_web_bundle():
       * present:   is any dist/index.html available?
       * source:    which of the two candidate dirs is being served
       * dist_size: total bytes of the served bundle
-      * frontend_source_shipped: was /app/frontend/package.json included in the
+      * frontend_source_shipped: was frontend/package.json included in the
                                  production image (i.e. can we self-build)?
     """
     import shutil as _sh
@@ -6015,7 +6013,7 @@ async def health_web_bundle():
         "preview_dir_exists": _WEB_DIST_PREVIEW.exists(),
         "preview_dir_has_index": (_WEB_DIST_PREVIEW / "index.html").exists(),
         "dist_size_bytes": size,
-        "frontend_source_shipped": Path("/app/frontend/package.json").exists(),
+        "frontend_source_shipped": (ROOT_DIR.parent / "frontend" / "package.json").exists(),
         "npx_available": _sh.which("npx") is not None,
         "yarn_available": _sh.which("yarn") is not None,
     }
@@ -6041,9 +6039,9 @@ app.add_middleware(
 # ---------------------------------------------------------------
 
 def _try_build_web_bundle() -> bool:
-    """Ensure /app/backend/web_dist/ (or the preview alt) has a working Expo
+    """Ensure ROOT_DIR/web_dist/ (or the preview alt) has a working Expo
     web bundle. If NEITHER location has index.html, attempt to build in
-    /app/frontend/ and then MIRROR the result into /app/backend/web_dist/ so
+    ROOT_DIR/../frontend/ and then MIRROR the result into ROOT_DIR/web_dist/ so
     the next production deploy will ship the bundle inside the backend image.
 
     Returns True if a web bundle is available after this call.
@@ -6067,12 +6065,12 @@ def _try_build_web_bundle() -> bool:
 
     log.info(f"[web-build] no dist at {_WEB_DIST_PROD} or {_WEB_DIST_PREVIEW} — attempting to build")
 
-    frontend_dir = Path("/app/frontend")
+    frontend_dir = ROOT_DIR.parent / "frontend"
     if not (frontend_dir / "package.json").exists():
         log.warning(
             f"[web-build] frontend source not present at {frontend_dir} — "
             "cannot build web bundle in this container. "
-            "Ship /app/backend/web_dist/ pre-built with the image instead."
+            f"Ship {_WEB_DIST_PROD} pre-built with the image instead."
         )
         return False
 

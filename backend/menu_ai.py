@@ -25,7 +25,14 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from dotenv import load_dotenv
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+
+try:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    _HAS_EMERGENT = True
+except ImportError:
+    LlmChat = None  # type: ignore
+    UserMessage = None  # type: ignore
+    _HAS_EMERGENT = False
 
 load_dotenv()
 
@@ -42,7 +49,7 @@ _TEXT_MODEL_NAME = "gpt-5.4-mini"
 _IMAGE_MODEL_PROVIDER = "gemini"
 _IMAGE_MODEL_NAME = "gemini-3.1-flash-image-preview"  # Nano Banana
 
-UPLOAD_DIR = Path("/app/backend/uploads/menu")
+UPLOAD_DIR = Path(os.environ.get("UPLOADS_DIR", Path(__file__).resolve().parent / "uploads")) / "menu"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # The canonical field-value sets we allow the model to choose from.
@@ -118,8 +125,8 @@ def _sanitize(fields: dict, name: str) -> dict:
 
 async def enrich_text(name: str, price_cents: int = 0) -> dict:
     """Call GPT-5.4-mini and return the structured fields."""
-    if not _EMERGENT_LLM_KEY:
-        log.warning("EMERGENT_LLM_KEY not set — using fallback text")
+    if not _HAS_EMERGENT or not _EMERGENT_LLM_KEY:
+        log.warning("EMERGENT_LLM_KEY not set or emergentintegrations not installed — using fallback text")
         return _fallback_text(name)
 
     price_hint = f" (approx CA${price_cents/100:.2f})" if price_cents else ""
@@ -146,7 +153,7 @@ async def enrich_text(name: str, price_cents: int = 0) -> dict:
 
 async def enrich_image(name: str, description: str = "", cuisine: str = "bengali") -> str:
     """Generate a photorealistic food image, save under /uploads/menu/, return public URL path."""
-    if not _EMERGENT_LLM_KEY:
+    if not _HAS_EMERGENT or not _EMERGENT_LLM_KEY:
         return ""
 
     prompt = (

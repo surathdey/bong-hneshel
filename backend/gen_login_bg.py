@@ -3,9 +3,13 @@ save it as assets/brand/login-bg.png (replaces the solid-purple placeholder)."""
 import asyncio, base64, os
 from dotenv import load_dotenv
 load_dotenv()
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+try:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+except ImportError:
+    LlmChat = None
+    UserMessage = None
 
-KEY = os.environ["EMERGENT_LLM_KEY"]
+KEY = os.environ.get("EMERGENT_LLM_KEY", "")
 OUT = "/app/frontend/assets/brand/login-bg.png"
 
 PROMPT = (
