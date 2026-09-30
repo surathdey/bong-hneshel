@@ -81,7 +81,7 @@ jobs:
 
       - name: Sync Initial Backend Files
         run: |
-          rsync -avz -e "ssh -p ${{ secrets.EC2_PORT || '22' }}" \
+          rsync -avz --no-owner --no-group --omit-dir-times -e "ssh -p ${{ secrets.EC2_PORT || '22' }}" \
             --exclude '.venv' \
             --exclude '__pycache__' \
             --exclude '.env' \
