@@ -9,7 +9,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, TextInput, Alert, Platform,
+  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, TextInput, Alert, Platform, Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@react-native-vector-icons/ionicons";
@@ -63,6 +63,41 @@ export default function AdminCustomers() {
   const [detailCache, setDetailCache] = useState<Record<string, { orders: Order[]; addresses: any[]; loyalty_history?: any[]; loyalty_points?: number }>>({});
   const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const EMPTY_ADD = { name: "", phone: "", email: "", line1: "", line2: "", city: "Mississauga", province: "ON", postal_code: "" };
+  const [showAdd, setShowAdd] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [addForm, setAddForm] = useState({ ...EMPTY_ADD });
+
+  const submitAdd = async () => {
+    if (!addForm.name.trim() || !addForm.phone.trim()) {
+      Alert.alert("Missing info", "Name and phone are required.");
+      return;
+    }
+    setSaving(true);
+    const hasAddr = addForm.line1.trim() || addForm.postal_code.trim();
+    const body: any = {
+      name: addForm.name.trim(),
+      phone: addForm.phone.trim(),
+      email: addForm.email.trim() || undefined,
+      address: hasAddr ? {
+        name: addForm.name.trim(),
+        email: addForm.email.trim() || "",
+        line1: addForm.line1.trim(),
+        line2: addForm.line2.trim(),
+        city: addForm.city.trim() || "Mississauga",
+        province: (addForm.province.trim() || "ON").toUpperCase(),
+        postal_code: addForm.postal_code.trim().toUpperCase(),
+      } : undefined,
+    };
+    const r = await adminApi.post<any>("/admin/customers", body);
+    setSaving(false);
+    if (!r.ok) { Alert.alert("Could not add customer", r.error || "Error"); return; }
+    setShowAdd(false);
+    setAddForm({ ...EMPTY_ADD });
+    Alert.alert(r.data?.existed ? "Already existed" : "Customer added",
+      r.data?.existed ? "A customer with this phone/email already exists." : `${body.name} has been added.`);
+    load();
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -218,6 +253,14 @@ export default function AdminCustomers() {
             </TouchableOpacity>
           )}
         </View>
+        <TouchableOpacity
+          testID="customers-add"
+          style={styles.addBtn}
+          onPress={() => setShowAdd(true)}
+        >
+          <Ionicons name="person-add-outline" size={16} color="#fff" />
+          <Text style={styles.importText}>Add Customer</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           testID="customers-import"
           style={[styles.importBtn, importing && { opacity: 0.6 }]}
@@ -382,6 +425,35 @@ export default function AdminCustomers() {
           })}
         </ScrollView>
       )}
+
+      <Modal visible={showAdd} transparent animationType="slide" onRequestClose={() => setShowAdd(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHead}>
+              <Text style={styles.modalTitle}>Add customer</Text>
+              <TouchableOpacity testID="add-cust-close" onPress={() => setShowAdd(false)} style={styles.modalClose}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ gap: 8, paddingBottom: spacing.lg }} keyboardShouldPersistTaps="handled">
+              <TextInput testID="add-name" placeholder="Name *" value={addForm.name} onChangeText={t => setAddForm({ ...addForm, name: t })} style={styles.input} placeholderTextColor={colors.textMuted} />
+              <TextInput testID="add-phone" placeholder="Phone * (e.g. 4161234567)" value={addForm.phone} onChangeText={t => setAddForm({ ...addForm, phone: t })} keyboardType="phone-pad" style={styles.input} placeholderTextColor={colors.textMuted} />
+              <TextInput testID="add-email" placeholder="Email (optional)" value={addForm.email} onChangeText={t => setAddForm({ ...addForm, email: t })} keyboardType="email-address" autoCapitalize="none" style={styles.input} placeholderTextColor={colors.textMuted} />
+              <Text style={styles.addrLabel}>Address (optional)</Text>
+              <TextInput testID="add-line1" placeholder="Street address" value={addForm.line1} onChangeText={t => setAddForm({ ...addForm, line1: t })} style={styles.input} placeholderTextColor={colors.textMuted} />
+              <TextInput testID="add-line2" placeholder="Unit / Apt (optional)" value={addForm.line2} onChangeText={t => setAddForm({ ...addForm, line2: t })} style={styles.input} placeholderTextColor={colors.textMuted} />
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TextInput testID="add-city" placeholder="City" value={addForm.city} onChangeText={t => setAddForm({ ...addForm, city: t })} style={[styles.input, { flex: 1 }]} placeholderTextColor={colors.textMuted} />
+                <TextInput testID="add-province" placeholder="Prov" value={addForm.province} onChangeText={t => setAddForm({ ...addForm, province: t })} autoCapitalize="characters" style={[styles.input, { width: 80 }]} placeholderTextColor={colors.textMuted} />
+                <TextInput testID="add-postal" placeholder="Postal" value={addForm.postal_code} onChangeText={t => setAddForm({ ...addForm, postal_code: t })} autoCapitalize="characters" style={[styles.input, { flex: 1 }]} placeholderTextColor={colors.textMuted} />
+              </View>
+              <TouchableOpacity testID="add-submit" style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={submitAdd} disabled={saving}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save customer</Text>}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </AdminShell>
   );
 }
@@ -396,7 +468,17 @@ const styles = StyleSheet.create({
   searchWrap: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, backgroundColor: colors.surface, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, minHeight: 40 },
   searchInput: { flex: 1, color: colors.text, fontSize: 13, paddingVertical: 8 },
   importBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.pill },
+  addBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.secondary, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.pill },
   importText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, color: colors.text, fontSize: 14 },
+  addrLabel: { color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1, marginTop: 6, textTransform: "uppercase" },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: "flex-end" },
+  modalSheet: { backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, maxHeight: "88%", ...(Platform.OS === "web" ? { maxWidth: 560, width: "100%", alignSelf: "center" } : {}) },
+  modalHead: { flexDirection: "row", alignItems: "center", marginBottom: spacing.md },
+  modalTitle: { flex: 1, fontSize: 19, fontWeight: "800", color: colors.text },
+  modalClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center" },
+  saveBtn: { backgroundColor: colors.primary, borderRadius: radius.pill, paddingVertical: 14, alignItems: "center", marginTop: spacing.sm },
+  saveBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
 
   selectAllRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, paddingHorizontal: 4 },
   selectAllText: { color: colors.textMuted, fontSize: 12, fontWeight: "700" },

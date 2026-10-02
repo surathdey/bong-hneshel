@@ -81,7 +81,7 @@ export default function NewOrderModal({
   // Delivery
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [address, setAddress] = useState({
-    line1: "", line2: "", city: "Mississauga", postal_code: "",
+    line1: "", line2: "", city: "Mississauga", province: "ON", postal_code: "",
   });
 
   // Payment + driver — Card (Stripe) is temporarily disabled for MVP,
@@ -115,7 +115,7 @@ export default function NewOrderModal({
     setPicked([]); setNotes(""); setComboPicker(null);
     setCustomName(""); setCustomPrice("");
     setPaymentMethod("cod"); setMarkAsPaid(false); setDriverId(null);
-    setAddress({ line1: "", line2: "", city: "Mississauga", postal_code: "" });
+    setAddress({ line1: "", line2: "", city: "Mississauga", province: "ON", postal_code: "" });
     setCustSearch("");
   };
 
@@ -125,7 +125,7 @@ export default function NewOrderModal({
       const a = selectedCust.default_address;
       setAddress({
         line1: a.line1 || "", line2: a.line2 || "",
-        city: a.city || "Mississauga", postal_code: a.postal_code || "",
+        city: a.city || "Mississauga", province: a.province || "ON", postal_code: a.postal_code || "",
       });
     }
   }, [selectedCust]);
@@ -411,6 +411,14 @@ export default function NewOrderModal({
                     <TextInput placeholder="Name *" value={newCust.name} onChangeText={t => setNewCust({...newCust, name:t})} style={styles.input} placeholderTextColor={colors.textMuted} testID="new-cust-name" />
                     <TextInput placeholder="Phone * (+14161234567)" value={newCust.phone} onChangeText={t => setNewCust({...newCust, phone:t})} keyboardType="phone-pad" style={styles.input} placeholderTextColor={colors.textMuted} testID="new-cust-phone" />
                     <TextInput placeholder="Email (optional)" value={newCust.email} onChangeText={t => setNewCust({...newCust, email:t})} keyboardType="email-address" autoCapitalize="none" style={styles.input} placeholderTextColor={colors.textMuted} testID="new-cust-email" />
+                    <Text style={styles.newCustAddrLabel}>Address (saved to the customer & used for this order)</Text>
+                    <TextInput placeholder="Street address *" value={address.line1} onChangeText={t => setAddress({...address, line1:t})} style={styles.input} placeholderTextColor={colors.textMuted} testID="new-cust-line1" />
+                    <TextInput placeholder="Unit / Apt (optional)" value={address.line2} onChangeText={t => setAddress({...address, line2:t})} style={styles.input} placeholderTextColor={colors.textMuted} testID="new-cust-line2" />
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <TextInput placeholder="City" value={address.city} onChangeText={t => setAddress({...address, city:t})} style={[styles.input, { flex: 1 }]} placeholderTextColor={colors.textMuted} testID="new-cust-city" />
+                      <TextInput placeholder="Province" value={address.province} onChangeText={t => setAddress({...address, province:t})} autoCapitalize="characters" style={[styles.input, { width: 90 }]} placeholderTextColor={colors.textMuted} testID="new-cust-province" />
+                    </View>
+                    <TextInput placeholder="Postal code *" value={address.postal_code} onChangeText={t => setAddress({...address, postal_code:t})} autoCapitalize="characters" style={styles.input} placeholderTextColor={colors.textMuted} testID="new-cust-postal" />
                     <TouchableOpacity onPress={() => setShowNewCustomer(false)} style={styles.linkBtn}>
                       <Ionicons name="arrow-back" size={16} color={colors.primary} />
                       <Text style={styles.linkBtnText}>Pick from existing instead</Text>
@@ -682,6 +690,10 @@ export default function NewOrderModal({
                     <Text style={styles.label}>City</Text>
                     <TextInput value={address.city} onChangeText={t => setAddress({...address, city:t})} style={styles.input} placeholderTextColor={colors.textMuted} />
                   </View>
+                  <View style={{ width: 90 }}>
+                    <Text style={styles.label}>Province</Text>
+                    <TextInput value={address.province} onChangeText={t => setAddress({...address, province:t})} autoCapitalize="characters" style={styles.input} placeholderTextColor={colors.textMuted} />
+                  </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.label}>Postal code</Text>
                     <TextInput value={address.postal_code} onChangeText={t => setAddress({...address, postal_code:t})} autoCapitalize="characters" style={styles.input} placeholderTextColor={colors.textMuted} testID="addr-postal" />
@@ -795,6 +807,7 @@ const styles = StyleSheet.create({
   custMeta: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
   linkBtn: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
   linkBtnText: { color: colors.primary, fontWeight: "700", fontSize: 12 },
+  newCustAddrLabel: { color: colors.textMuted, fontSize: 11, fontWeight: "700", marginTop: 8, marginBottom: 2 },
 
   modeBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
   modeBtnOn: { backgroundColor: colors.primary, borderColor: colors.primary },

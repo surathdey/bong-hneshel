@@ -352,6 +352,10 @@ Bug: applying an unusable coupon (first-order-only after already ordering, inval
 Admin → Coupons: each coupon card has a new "Redemptions" button opening a modal listing customers who used it. Backend `GET /api/admin/coupons/{code}/redemptions` (admin-gated) queries non-cancelled orders with that `coupon_code`, joins `users` for name/email, returns rows (name, email, phone, order_id, discount_cents, total_cents, status, created_at) + summary (count, unique_customers, total_discount_cents). Frontend `admin/coupons.tsx` shows summary header + scrollable list. Verified via curl (WELCOME20 → 4 redemptions, 401 unauth) + admin UI screenshot. web_dist refreshed, bundle_matches_source true.
 
 ---
+## Admin customer address + single-add form (2026-06)
+- **New Order modal** (`src/components/NewOrderModal.tsx`): the "Add new customer" sub-form now includes address fields (street, unit, city, province, postal) bound to the shared order `address` state → saved as the customer's `default_address` and used as the order delivery address. Province field also added to the Delivery-step address form; `address` state gained `province` (default "ON").
+- **Customers page** (`app/admin/customers.tsx`): new **"Add Customer"** button + modal form (name*, phone*, email, full address) → `POST /api/admin/customers` (backend already supported `address`). Verified live: form renders, backend stores `default_address`.
+
 ## Admin Customer CSV import (2026-06)
 - `POST /api/admin/customers/bulk-upload` (admin-gated, multipart CSV). Flexible headers (first_name/last_name/email/phone/address|line1/line2/city/province|state/postal_code|zip/country). Stores name="First Last", address as `default_address`, role=customer, loyalty_points=0, `source="admin_import"`. Phone normalized to E.164 (+1 for 10-digit CA). De-dupes by email or phone (returns inserted/skipped/errors). Idempotent.
 - Frontend: Admin → Customers has an **"Import CSV"** button (`app/admin/customers.tsx`, expo-document-picker + multipart fetch).
