@@ -4418,6 +4418,117 @@ async def admin_create_customer(payload: AdminCustomerIn, admin=Depends(_current
     return {"user_id": user_id, "existed": False, "user": doc}
 
 
+def _normalize_phone_ca(raw: str) -> str:
+    """Best-effort E.164 for Canadian numbers so SMS can be delivered."""
+    import re as _re
+    s = (raw or "").strip()
+    digits = _re.sub(r"\D", "", s)
+    if not digits:
+        return ""
+    if len(digits) == 10:
+        return "+1" + digits
+    if len(digits) == 11 and digits.startswith("1"):
+        return "+" + digits
+    return ("+" + digits) if not s.startswith("+") else ("+" + digits)
+
+
+@api.post("/admin/customers/bulk-upload")
+async def admin_bulk_upload_customers(file: UploadFile = File(...), admin=Depends(_current_admin)):
+    """Bulk-import customers from a CSV (header row required). Recognised columns
+    (case/spacing-insensitive): first_name, last_name, email, phone, address/line1,
+    line2, city, province/state, postal_code/zip, country. Name is stored as
+    "First Last", the address becomes the customer's default address, role=customer,
+    loyalty_points=0. Duplicates (by email or phone) are skipped."""
+    import csv as _csv2, io as _io2
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except Exception:
+        text = raw.decode("latin-1", errors="ignore")
+    reader = _csv2.DictReader(_io2.StringIO(text))
+
+    # map many possible header spellings → canonical keys
+    SYN = {
+        "first_name": ["first_name", "first", "firstname", "given_name", "fname"],
+        "last_name": ["last_name", "last", "lastname", "surname", "lname", "family_name"],
+        "email": ["email", "email_address", "e_mail", "mail"],
+        "phone": ["phone", "phone_number", "mobile", "cell", "contact", "phone_no", "mobile_number"],
+        "line1": ["address", "address_1", "address_line_1", "line1", "address_line1", "street", "street_address", "addr1"],
+        "line2": ["address_2", "address_line_2", "line2", "address_line2", "apt", "unit", "suite", "addr2"],
+        "city": ["city", "town"],
+        "province": ["province", "state", "region"],
+        "postal_code": ["postal_code", "postal", "zip", "zip_code", "postcode", "zipcode"],
+        "country": ["country", "nation"],
+    }
+    def canon(key: str) -> Optional[str]:
+        k = (key or "").strip().lower().replace(" ", "_").replace("-", "_")
+        for canonical, alts in SYN.items():
+            if k in alts:
+                return canonical
+        return None
+
+    inserted, skipped = 0, 0
+    errors: List[str] = []
+    for idx, row in enumerate(reader, start=2):
+        rec: dict = {}
+        for k, v in (row or {}).items():
+            ck = canon(k)
+            if ck:
+                rec[ck] = (v or "").strip()
+        name = f"{rec.get('first_name','')} {rec.get('last_name','')}".strip()
+        email = (rec.get("email") or "").strip().lower()
+        phone = _normalize_phone_ca(rec.get("phone") or "")
+        if not name and not email and not phone:
+            continue  # blank line
+        if not name:
+            name = email.split("@")[0] if email else (phone or "Customer")
+        if not email and not phone:
+            errors.append(f"Row {idx}: needs an email or phone to identify the customer")
+            continue
+        # de-dupe
+        existing = None
+        if email:
+            existing = await db.users.find_one({"email": email}, {"_id": 0, "user_id": 1})
+        if not existing and phone:
+            existing = await db.users.find_one({"phone": phone}, {"_id": 0, "user_id": 1})
+        if existing:
+            skipped += 1
+            continue
+        addr = None
+        if rec.get("line1") or rec.get("line2") or rec.get("city") or rec.get("postal_code"):
+            addr = {
+                "name": name,
+                "email": email,
+                "line1": rec.get("line1", ""),
+                "line2": rec.get("line2", ""),
+                "city": rec.get("city") or "",
+                "province": rec.get("province") or "ON",
+                "postal_code": (rec.get("postal_code") or "").upper().replace(" ", ""),
+                "country": rec.get("country") or "Canada",
+                "instructions": "",
+            }
+        doc = {
+            "user_id": f"user_{uuid.uuid4().hex[:12]}",
+            "name": name,
+            "role": "customer",
+            "loyalty_points": 0,
+            "created_at": datetime.now(timezone.utc),
+            "default_address": addr,
+            "source": "admin_import",
+        }
+        if email:
+            doc["email"] = email
+        if phone:
+            doc["phone"] = phone
+        await db.users.insert_one(doc)
+        inserted += 1
+
+    return {"ok": True, "inserted": inserted, "skipped": skipped,
+            "error_count": len(errors), "errors": errors[:50]}
+
+
+
+
 @api.get("/admin/order-builder")
 async def admin_order_builder(admin=Depends(_current_admin)):
     """One-shot helper: returns everything the admin needs to build a new order.

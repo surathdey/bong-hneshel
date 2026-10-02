@@ -9,13 +9,15 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, TextInput,
+  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView, TextInput, Alert, Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Ionicons from "@react-native-vector-icons/ionicons";
+import * as DocumentPicker from "expo-document-picker";
 import AdminShell from "@/src/components/AdminShell";
 import ExportMenu from "@/src/components/ExportMenu";
 import { adminApi, getAdminToken } from "@/src/adminApi";
+import { getBackendUrl } from "@/src/utils/backendUrl";
 import { colors, spacing, radius } from "@/src/theme";
 
 type Customer = {
@@ -60,6 +62,7 @@ export default function AdminCustomers() {
   const [integrationsCfg, setIntegrationsCfg] = useState({ email: false, twilio: false, drive: false, emailRecipient: "" });
   const [detailCache, setDetailCache] = useState<Record<string, { orders: Order[]; addresses: any[]; loyalty_history?: any[]; loyalty_points?: number }>>({});
   const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,6 +80,47 @@ export default function AdminCustomers() {
     });
     setLoading(false);
   }, [router]);
+
+  const importCsv = useCallback(async () => {
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({
+        type: ["text/csv", "text/comma-separated-values", "application/vnd.ms-excel", "*/*"],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (picked.canceled || !picked.assets?.length) return;
+      const asset = picked.assets[0];
+      setImporting(true);
+      const form = new FormData();
+      if (Platform.OS === "web") {
+        const f = (asset as any).file as File | undefined;
+        if (f) form.append("file", f, asset.name || "customers.csv");
+        else {
+          const blob = await (await fetch(asset.uri)).blob();
+          form.append("file", blob as any, asset.name || "customers.csv");
+        }
+      } else {
+        form.append("file", { uri: asset.uri, name: asset.name || "customers.csv", type: "text/csv" } as any);
+      }
+      const token = await getAdminToken();
+      const res = await fetch(`${getBackendUrl()}/api/admin/customers/bulk-upload`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: form,
+      });
+      const data = await res.json();
+      setImporting(false);
+      if (!res.ok) { Alert.alert("Import failed", data?.detail || "Error"); return; }
+      const msg = `Imported ${data.inserted} customer(s).`
+        + (data.skipped ? `\n${data.skipped} already existed (skipped).` : "")
+        + (data.error_count ? `\n${data.error_count} row(s) had issues.` : "");
+      Alert.alert("Import complete", msg + (data.errors?.length ? `\n\n${data.errors.slice(0, 5).join("\n")}` : ""));
+      load();
+    } catch (e: any) {
+      setImporting(false);
+      Alert.alert("Import failed", e?.message || "Could not read file");
+    }
+  }, [load]);
 
   useEffect(() => {
     (async () => {
@@ -174,6 +218,16 @@ export default function AdminCustomers() {
             </TouchableOpacity>
           )}
         </View>
+        <TouchableOpacity
+          testID="customers-import"
+          style={[styles.importBtn, importing && { opacity: 0.6 }]}
+          onPress={importCsv}
+          disabled={importing}
+        >
+          {importing ? <ActivityIndicator color="#fff" size="small" />
+            : <Ionicons name="cloud-upload-outline" size={16} color="#fff" />}
+          <Text style={styles.importText}>Import CSV</Text>
+        </TouchableOpacity>
         <ExportMenu
           testID="customers-export"
           selectedCount={selected.size}
@@ -341,6 +395,8 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm },
   searchWrap: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, backgroundColor: colors.surface, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, minHeight: 40 },
   searchInput: { flex: 1, color: colors.text, fontSize: 13, paddingVertical: 8 },
+  importBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.pill },
+  importText: { color: "#fff", fontWeight: "700", fontSize: 13 },
 
   selectAllRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8, paddingHorizontal: 4 },
   selectAllText: { color: colors.textMuted, fontSize: 12, fontWeight: "700" },
