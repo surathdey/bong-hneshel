@@ -30,7 +30,7 @@ type Partner = { partner_id: string; name: string; phone?: string; vehicle?: str
 
 type PickedItem = {
   key: string;                       // uid for React
-  kind: "menu" | "weekly_package" | "catering";
+  kind: "menu" | "weekly_package" | "catering" | "custom";
   ref_id: string;
   name: string;
   price_cents: number;
@@ -43,6 +43,7 @@ const MODES = [
   { key: "menu", label: "À la carte", icon: "restaurant-outline" as const },
   { key: "weekly_package", label: "Weekly Combo", icon: "gift-outline" as const },
   { key: "catering", label: "Catering", icon: "people-outline" as const },
+  { key: "custom", label: "Custom", icon: "create-outline" as const },
 ];
 
 const money = (c: number) => `CA$${(c / 100).toFixed(2)}`;
@@ -68,8 +69,11 @@ export default function NewOrderModal({
   const [newCust, setNewCust] = useState({ name: "", phone: "", email: "" });
 
   // Items state
-  const [mode, setMode] = useState<"menu" | "weekly_package" | "catering">("menu");
+  const [mode, setMode] = useState<"menu" | "weekly_package" | "catering" | "custom">("menu");
   const [picked, setPicked] = useState<PickedItem[]>([]);
+  // Custom dish entry (admin types a one-off name + price)
+  const [customName, setCustomName] = useState("");
+  const [customPrice, setCustomPrice] = useState("");
 
   // Weekly Combo picker (opens when admin clicks + on a combo)
   const [comboPicker, setComboPicker] = useState<{ combo: any; qty: Record<string, number> } | null>(null);
@@ -109,6 +113,7 @@ export default function NewOrderModal({
     setSelectedCust(null); setShowNewCustomer(false);
     setNewCust({ name: "", phone: "", email: "" });
     setPicked([]); setNotes(""); setComboPicker(null);
+    setCustomName(""); setCustomPrice("");
     setPaymentMethod("cod"); setMarkAsPaid(false); setDriverId(null);
     setAddress({ line1: "", line2: "", city: "Mississauga", postal_code: "" });
     setCustSearch("");
@@ -229,6 +234,23 @@ export default function NewOrderModal({
     // Open inline picker so admin can choose exact items (mirrors customer app UX).
     setComboPicker({ combo, qty: {} });
   };
+  const addCustom = () => {
+    const name = customName.trim();
+    const dollars = parseFloat(customPrice);
+    if (!name) { Alert.alert("Missing name", "Enter a dish name."); return; }
+    if (isNaN(dollars) || dollars < 0) { Alert.alert("Invalid price", "Enter a valid price."); return; }
+    const cents = Math.round(dollars * 100);
+    setPicked(prev => [...prev, {
+      key: `custom_${Date.now()}`,
+      kind: "custom",
+      ref_id: "",
+      name,
+      price_cents: cents,
+      quantity: 1,
+    }]);
+    setCustomName("");
+    setCustomPrice("");
+  };
   const bumpComboQty = (mid: string, delta: number) => {
     setComboPicker(cp => {
       if (!cp) return cp;
@@ -292,6 +314,8 @@ export default function NewOrderModal({
         kind: p.kind, ref_id: p.ref_id, quantity: p.quantity,
         catering_guest_count: p.catering_guest_count,
         package_selections: p.package_selections,
+        custom_name: p.kind === "custom" ? p.name : undefined,
+        custom_price_cents: p.kind === "custom" ? p.price_cents : undefined,
       })),
       address, slot: { date: selectedSlot!.date, window: selectedSlot!.window },
       phone: selectedCust?.phone || newCust.phone,
@@ -555,6 +579,37 @@ export default function NewOrderModal({
                       </TouchableOpacity>
                     </View>
                   ))}
+
+                  {mode === "custom" && (
+                    <View style={{ gap: 8, paddingVertical: 4 }}>
+                      <Text style={styles.emptyMini}>
+                        Add a one-off dish that isn&apos;t on the master menu. Just a name and a price.
+                      </Text>
+                      <Text style={styles.label}>Dish name</Text>
+                      <TextInput
+                        testID="custom-name"
+                        placeholder="e.g. Special Thali"
+                        value={customName}
+                        onChangeText={setCustomName}
+                        style={styles.input}
+                        placeholderTextColor={colors.textMuted}
+                      />
+                      <Text style={styles.label}>Price (CA$)</Text>
+                      <TextInput
+                        testID="custom-price"
+                        placeholder="e.g. 18.99"
+                        value={customPrice}
+                        onChangeText={setCustomPrice}
+                        keyboardType="decimal-pad"
+                        style={styles.input}
+                        placeholderTextColor={colors.textMuted}
+                      />
+                      <TouchableOpacity onPress={addCustom} style={styles.confirmComboBtn} testID="add-custom">
+                        <Ionicons name="add-circle" size={16} color="#fff" />
+                        <Text style={styles.createBtnText}>Add custom dish</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </ScrollView>
 
                 {picked.length > 0 && (

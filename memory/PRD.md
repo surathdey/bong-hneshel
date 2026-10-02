@@ -352,6 +352,16 @@ Bug: applying an unusable coupon (first-order-only after already ordering, inval
 Admin → Coupons: each coupon card has a new "Redemptions" button opening a modal listing customers who used it. Backend `GET /api/admin/coupons/{code}/redemptions` (admin-gated) queries non-cancelled orders with that `coupon_code`, joins `users` for name/email, returns rows (name, email, phone, order_id, discount_cents, total_cents, status, created_at) + summary (count, unique_customers, total_discount_cents). Frontend `admin/coupons.tsx` shows summary header + scrollable list. Verified via curl (WELCOME20 → 4 redemptions, 401 unauth) + admin UI screenshot. web_dist refreshed, bundle_matches_source true.
 
 ---
+## Admin New Order — custom dishes + full confirmation flow (2026-06)
+- **Custom dish**: New Order modal now has a 4th item mode **"Custom"** (`src/components/NewOrderModal.tsx`) — admin types a dish name + price (CA$) and taps "Add custom dish"; it's added to the cart like any item. Backend: `OrderItemIn` gained `custom_name` + `custom_price_cents`, and `_resolve_items` handles `kind == "custom"` (ref_id "", no master link). Verified via `tests/test_admin_custom_order.py`.
+- **Confirmation flow for admin orders**: `/admin/orders/create` now calls `_notify_order_created` after creation/driver-assignment → same customer Email + SMS (invoice link, items, loyalty lines) and owner Email + SMS (with items) as mobile checkout. `_payment_note` enhanced: `payment_status == "paid"` → "Payment received — CA$X paid in full." else COD/Interac instructions.
+
+## Delivery SMS to customers (2026-06)
+- `_notify_customer_eta` now SMSes **all** customers (was guest-only) with tracking link + ETA + approx clock time (America/Toronto). Sent on START DELIVERY (tentative; first stop exact) and when a stop is delivered the next customer gets an exact "you're next" SMS (once, `exact_eta_sent`). On `delivered`, customer also gets a confirmation SMS. Verified via `tests/test_delivery_eta_sms.py`.
+
+## Loyalty details in SMS (2026-06)
+- Customer confirmation SMS shows "Loyalty used: N pts (saved CA$X)" + trailing "You have N loyalty points remaining (~CA$Y)." (account holders). Owner SMS lists ordered items. Verified via `tests/test_sms_loyalty.py`.
+
 ## Review Management System (2026-06)
 Spec (user choices 1b/2a/3b/4b): delivery-triggered, token link no-login, moderated-but-customer-blind, CSV bulk upload, stars + optional comment.
 - **Backend** (`server.py`, REVIEWS block before include_router): new collections `reviews` {review_id, order_id, user_id, item_id, item_name, rating(1-5), comment, customer_name, status(pending|approved|rejected), source(customer|admin_bulk), created_at} and `review_requests` {token, order_id, user_id, items[], send_after, status(scheduled|sent|submitted), customer_name, phone, email, public_base_url}.

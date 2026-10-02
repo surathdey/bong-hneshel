@@ -482,12 +482,14 @@ class CateringSelection(BaseModel):
 
 
 class OrderItemIn(BaseModel):
-    kind: str  # "menu" | "catering" | "weekly_package"
-    ref_id: str  # item_id | package_id | weekly_menu_id
+    kind: str  # "menu" | "catering" | "weekly_package" | "custom"
+    ref_id: str  # item_id | package_id | weekly_menu_id | "" for custom
     quantity: int
     catering_guest_count: Optional[int] = None  # for catering only
     catering_selections: Optional[CateringSelection] = None
     package_selections: Optional[List[str]] = None  # weekly_package master_ids picked
+    custom_name: Optional[str] = None            # for kind == "custom" (admin-entered dish)
+    custom_price_cents: Optional[int] = None     # for kind == "custom"
 
 
 class Address(BaseModel):
@@ -1924,6 +1926,20 @@ async def _resolve_items(items: List[OrderItemIn]):
                 "package_surcharge_cents": surcharge_total,      # transparency for receipts
                 "weekly_menu_id": it.ref_id,
                 "weekly_menu_week_start": wm.get("week_start"),
+            }
+        elif it.kind == "custom":
+            # Admin-entered one-off dish: just a name + price, no master link.
+            name = (it.custom_name or "").strip() or "Custom item"
+            unit = max(0, int(it.custom_price_cents or 0))
+            qty = max(1, int(it.quantity or 1))
+            line = {
+                "kind": "custom",
+                "ref_id": "",
+                "name": name,
+                "unit_price_cents": unit,
+                "quantity": qty,
+                "image_url": "",
+                "line_total_cents": unit * qty,
             }
         else:
             raise HTTPException(400, f"Unknown item kind {it.kind}")
@@ -4657,6 +4673,16 @@ async def admin_create_manual_order(req: AdminCreateOrderReq, admin=Depends(_cur
         order_doc["delivery_status"] = "assigned"
         order_doc["status"] = "packed"
 
+    # 5) Fire the full order-confirmation flow (customer email + SMS and owner
+    # email + SMS) — identical templates to the mobile checkout, incl. invoice
+    # link + payment status. Best-effort: never fail the order on a send error.
+    try:
+        fresh = await db.orders.find_one({"order_id": order_doc["order_id"]}, {"_id": 0}) or order_doc
+        u = await db.users.find_one({"user_id": user_doc["user_id"]}, {"_id": 0}) or user_doc
+        await _notify_order_created(fresh, settings, u)
+    except Exception as e:
+        log.warning(f"[admin.order.notify] {e}")
+
     return {"ok": True, "order": order_doc,
             "customer": {"user_id": user_doc["user_id"],
                          "name": user_doc.get("name"),
@@ -5499,6 +5525,9 @@ def _order_items_text(order: dict) -> str:
 def _payment_note(order: dict, settings: dict) -> str:
     pm = order.get("payment_method")
     total = order.get("total_cents", 0) / 100
+    # Already settled (card paid, or admin marked paid) → say so clearly.
+    if order.get("payment_status") == "paid":
+        return f"Payment received — CA${total:.2f} paid in full. Thank you!"
     if pm == "cod":
         return f"Cash on Delivery — please keep CA${total:.2f} ready for the driver."
     if pm == "interac":
