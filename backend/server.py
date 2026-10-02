@@ -6643,6 +6643,41 @@ async def admin_bulk_upload_reviews(file: UploadFile = File(...), admin=Depends(
     return {"ok": True, "inserted": len(docs), "error_count": len(errors), "errors": errors[:50]}
 
 
+@api.get("/api-reference")
+async def api_reference_page():
+    """Human-readable, rendered API reference (Markdown → HTML via marked.js)."""
+    from fastapi.responses import HTMLResponse
+    import json as _json
+    try:
+        md = (Path(__file__).resolve().parent / "API_REFERENCE.md").read_text(encoding="utf-8")
+    except Exception:
+        md = "# API Reference\n\nReference file not found."
+    md_js = _json.dumps(md)
+    html = """<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Bong Hneshel — API Reference</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-light.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  body{margin:0;background:#faf7fb}
+  .wrap{max-width:900px;margin:0 auto;padding:32px 20px 80px}
+  .markdown-body{box-sizing:border-box}
+  .markdown-body table{display:table;width:100%}
+  .topbar{background:#3C053C;color:#fff;padding:16px 20px;font-weight:800;font-size:18px}
+</style></head>
+<body>
+<div class="topbar">🍛 Bong Hneshel — API Reference</div>
+<div class="wrap"><article id="content" class="markdown-body"></article></div>
+<script>
+  const md = __MD_JSON__;
+  document.getElementById('content').innerHTML = marked.parse(md);
+</script>
+</body></html>""".replace("__MD_JSON__", md_js)
+    return HTMLResponse(content=html)
+
+
+
 # --- Register router
 app.include_router(api)
 
