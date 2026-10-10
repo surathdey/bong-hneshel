@@ -9,82 +9,193 @@ on:
       - 'brand.json'
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
+    inputs:
+      force_reinstall_deps:
+        description: 'Force reinstall all requirements.txt dependencies'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-backend-prod
+  cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Sync Python Code & Reload Backend
+  validate:
+    name: 🔍 Pre-flight Validation
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configure SSH key
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Syntax & Compilation Check
+        run: |
+          echo "Checking Python syntax in backend directory..."
+          python -m py_compile backend/*.py
+          echo "✅ All Python files passed syntax check!"
+
+  deploy:
+    name: 🚀 Sync & Deploy to EC2
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH key & Client
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_PRIVATE_KEY || secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p "${{ secrets.EC2_PORT || '22' }}" -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "${{ secrets.EC2_PORT || '22' }}" -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          cat >> ~/.ssh/config << EOF
+          Host ec2-deploy
+            HostName ${{ secrets.EC2_HOST }}
+            User ${{ secrets.EC2_USER }}
+            Port ${{ secrets.EC2_PORT || '22' }}
+            IdentityFile ~/.ssh/id_rsa
+            StrictHostKeyChecking accept-new
+            ConnectTimeout 15
+          EOF
 
-      - name: Prepare Remote Directories & Permissions
+      - name: Pre-Deployment Checks & Backup
         run: |
-          ssh -p ${{ secrets.EC2_PORT || '22' }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
-            sudo mkdir -p /app/restaurant/bong-hneshel/backend
+          ssh ec2-deploy "
+            set -e
+            # Ensure required application directories exist
+            sudo mkdir -p /app/restaurant/bong-hneshel/backend/uploads
+            sudo mkdir -p /app/restaurant/bong-hneshel/backend/scripts
+            sudo mkdir -p /app/restaurant/bong-hneshel/backend/tools
+            sudo mkdir -p /app/restaurant/bong-hneshel/backend/web_dist
             sudo chown -R ${{ secrets.EC2_USER }}:${{ secrets.EC2_USER }} /app/restaurant/bong-hneshel
-            sudo chmod -R u+rwX /app/restaurant/bong-hneshel
+
+            # Ensure Python 3.12 is installed on EC2
+            if ! command -v python3.12 &>/dev/null; then
+              echo '📦 Installing Python 3.12 on EC2...'
+              if command -v dnf &>/dev/null; then
+                sudo dnf install -y python3.12 python3.12-pip
+              else
+                sudo apt-get update && sudo apt-get install -y python3.12 python3.12-venv
+              fi
+            fi
+
+            # Check and ensure MongoDB is active
+            if command -v systemctl &>/dev/null; then
+              if sudo systemctl is-active --quiet mongod; then
+                echo '✅ MongoDB service is active'
+              else
+                echo '⚠️ MongoDB is inactive; attempting restart...'
+                sudo systemctl restart mongod || true
+              fi
+            fi
+
+            # Create backup of current backend release for instant rollback
+            if [ -d /app/restaurant/bong-hneshel/backend ]; then
+              mkdir -p /app/restaurant/bong-hneshel/backend_prev
+              rsync -a --delete \
+                --exclude '.venv' \
+                --exclude 'uploads/' \
+                --exclude '.env' \
+                --exclude '*.log' \
+                /app/restaurant/bong-hneshel/backend/ /app/restaurant/bong-hneshel/backend_prev/ || true
+              echo '📦 Created pre-deployment backup'
+            fi
           "
 
-      - name: Sync Python Backend Code
+      - name: Sync Backend Code & Assets
         run: |
-          # Sync only backend code, scripts, clients, and assets
-          rsync -avz --no-owner --no-group --omit-dir-times -e "ssh -p ${{ secrets.EC2_PORT || '22' }}" \
+          rsync -avz --no-owner --no-group --omit-dir-times -e ssh \
             --exclude '.venv' \
             --exclude '__pycache__' \
             --exclude '.env' \
             --exclude 'uploads/' \
             --exclude '*.log' \
             --exclude '.backend.pid' \
-            backend/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/app/restaurant/bong-hneshel/backend/
+            --exclude '.git' \
+            --exclude '.pytest_cache' \
+            --exclude '.DS_Store' \
+            --exclude '*.pyc' \
+            backend/ ec2-deploy:/app/restaurant/bong-hneshel/backend/
 
           if [ -f brand.json ]; then
-            scp -P ${{ secrets.EC2_PORT || '22' }} brand.json ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/app/restaurant/bong-hneshel/
-            scp -P ${{ secrets.EC2_PORT || '22' }} brand.json ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/app/restaurant/bong-hneshel/backend/
+            scp brand.json ec2-deploy:/app/restaurant/bong-hneshel/
+            scp brand.json ec2-deploy:/app/restaurant/bong-hneshel/backend/
           fi
 
-      - name: Update Dependencies & Restart Service
+      - name: Update Systemd, Dependencies & Restart Service
         run: |
-          ssh -p ${{ secrets.EC2_PORT || '22' }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+          ssh ec2-deploy "
+            set -e
             cd /app/restaurant/bong-hneshel/backend
-            
-            # Install / upgrade any changed dependencies
-            if [ -f requirements.txt ] && [ -d .venv ]; then
+
+            # 1. Update and enable systemd unit file
+            if [ -f bong-hneshel.service ]; then
+              echo '⚙️ Syncing systemd service definition...'
+              sudo cp bong-hneshel.service /etc/systemd/system/bong-hneshel.service
+              sudo systemctl daemon-reload
+              sudo systemctl enable bong-hneshel
+            fi
+
+            # 2. Virtual environment bootstrap using Python 3.12
+            if [ ! -d .venv ] || [ ! -f .venv/bin/uvicorn ]; then
+              echo '📦 Bootstrapping Python 3.12 virtual environment...'
+              rm -rf .venv
+              python3.12 -m venv .venv
+              .venv/bin/pip install --upgrade pip
+              .venv/bin/pip install -r requirements.txt
+            elif [ '${{ inputs.force_reinstall_deps }}' = 'true' ]; then
+              echo '🔄 Force-reinstalling dependencies...'
+              .venv/bin/pip install -r requirements.txt
+            else
+              echo '📦 Verifying dependencies...'
               .venv/bin/pip install -r requirements.txt
             fi
 
             chmod +x start.sh stop.sh run.sh 2>/dev/null || true
 
-            # Gracefully restart backend
-            if sudo systemctl is-active --quiet bong-hneshel || sudo systemctl is-enabled --quiet bong-hneshel; then
-              echo '🔄 Restarting bong-hneshel systemd service...'
-              sudo systemctl restart bong-hneshel
-            else
-              echo '🔄 Restarting via shell scripts...'
-              ./stop.sh || true
-              ./start.sh
-            fi
+            # 3. Restart bong-hneshel service
+            echo '🔄 Restarting bong-hneshel service via systemctl...'
+            sudo systemctl restart bong-hneshel
           "
 
-      - name: Health Check Verification
+      - name: Health Check & Auto-Rollback on Failure
         run: |
-          sleep 4
-          ssh -p ${{ secrets.EC2_PORT || '22' }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
-            for i in {1..10}; do
-              if curl -s -f http://127.0.0.1:8002/health; then
-                echo '✅ Deployment complete! Backend is healthy and responding.'
+          echo "Waiting 5 seconds before health verification..."
+          sleep 5
+          ssh ec2-deploy '
+            for i in {1..15}; do
+              if curl -s -f http://127.0.0.1:8002/health > /dev/null; then
+                echo "✅ Backend health probe passed on port 8002!"
+                
+                # Check Nginx reverse proxy if active
+                if curl -s -f http://127.0.0.1:8082/health > /dev/null; then
+                  echo "✅ Nginx reverse-proxy health passed on port 8082!"
+                fi
                 exit 0
               fi
-              echo 'Waiting for backend to respond (attempt \$i)...'
+              echo "Waiting for backend on 8002 (attempt \$i/15)..."
               sleep 2
             done
-            echo '❌ Health check failed after deployment'
+
+            echo "❌ Health check failed after deployment! Dumping diagnostic logs:"
+            echo "--- Systemd Service Status ---"
+            sudo systemctl status bong-hneshel.service --no-pager || true
+            echo "--- Journalctl Output ---"
+            sudo journalctl -u bong-hneshel.service -n 50 --no-pager || true
+            echo "--- Application Log (backend.log) ---"
+            tail -n 50 /app/restaurant/bong-hneshel/backend/backend.log 2>/dev/null || true
+
+            # Rollback if backup exists
+            if [ -d /app/restaurant/bong-hneshel/backend_prev ]; then
+              echo "🔄 Attempting automatic rollback to previous release..."
+              rsync -a /app/restaurant/bong-hneshel/backend_prev/ /app/restaurant/bong-hneshel/backend/
+              sudo systemctl restart bong-hneshel || true
+            fi
+
             exit 1
-          "
+          '

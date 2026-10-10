@@ -4,7 +4,7 @@
 # ==============================================================================
 set -e
 
-MONGO_PORT="${1:-27018}"
+MONGO_PORT="${1:-27017}"
 APP_USER="${2:-ec2-user}"
 APP_ROOT="/app/restaurant/bong-hneshel"
 BACKEND_DIR="${APP_ROOT}/backend"
@@ -55,18 +55,18 @@ echo "✅ MongoDB service active:"
 sudo systemctl status mongod --no-pager
 
 # 4. Install System Dependencies & Setup Python Virtual Environment
-echo "🐍 Setting up Python virtual environment..."
-if ! command -v python3 &> /dev/null; then
+echo "🐍 Setting up Python 3.12 virtual environment..."
+if ! command -v python3.12 &> /dev/null; then
   if command -v dnf &> /dev/null; then
-    sudo dnf install -y python3 python3-pip
+    sudo dnf install -y python3.12 python3.12-pip
   else
-    sudo apt-get update && sudo apt-get install -y python3 python3-pip python3-venv
+    sudo apt-get update && sudo apt-get install -y python3.12 python3.12-venv
   fi
 fi
 
 cd "${BACKEND_DIR}"
 if [ ! -d ".venv" ]; then
-  python3 -m venv .venv
+  python3.12 -m venv .venv
 fi
 .venv/bin/pip install --upgrade pip
 if [ -f "requirements.txt" ]; then

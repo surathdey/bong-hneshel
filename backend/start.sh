@@ -36,10 +36,14 @@ if [ -n "$PORT_PID" ]; then
   exit 0
 fi
 
-# 3. Check Virtual Environment with Python 3.14
+# 3. Check Virtual Environment (Python 3.12 preferred)
 if [ ! -d "$VENV_DIR" ]; then
-  echo "📦 Creating virtual environment using Python 3.14..."
-  python3 -m venv "$VENV_DIR"
+  PYTHON_BIN="python3"
+  if command -v python3.12 >/dev/null 2>&1; then
+    PYTHON_BIN="python3.12"
+  fi
+  echo "📦 Creating virtual environment using $PYTHON_BIN..."
+  $PYTHON_BIN -m venv "$VENV_DIR"
   "$VENV_DIR/bin/pip" install --upgrade pip
   "$VENV_DIR/bin/pip" install -r "$DIR/requirements.txt"
 fi
