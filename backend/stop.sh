@@ -17,11 +17,18 @@ echo "=================================================="
 
 STOPPED=0
 
-# 1. Stop by PID file
+# 1. Stop systemd service if active
+if command -v systemctl >/dev/null 2>&1 && sudo systemctl is-active --quiet bong-hneshel; then
+  echo "🔄 Stopping via systemd service (bong-hneshel)..."
+  sudo systemctl stop bong-hneshel
+  STOPPED=1
+fi
+
+# 2. Stop by PID file (for manual / local nohup runs)
 if [ -f "$PID_FILE" ]; then
   PID=$(cat "$PID_FILE")
   if ps -p "$PID" > /dev/null 2>&1; then
-    echo "Stopping backend process (PID: $PID)..."
+    echo "Stopping manual process (PID: $PID)..."
     kill -15 "$PID" 2>/dev/null || true
     sleep 1
     if ps -p "$PID" > /dev/null 2>&1; then
@@ -32,7 +39,7 @@ if [ -f "$PID_FILE" ]; then
   rm -f "$PID_FILE"
 fi
 
-# 2. Stop process on port 8001
+# 3. Stop process listening on port
 PORT_PID=$(lsof -ti :$PORT 2>/dev/null || true)
 if [ -n "$PORT_PID" ]; then
   echo "Stopping process listening on port $PORT (PID: $PORT_PID)..."

@@ -17,7 +17,16 @@ echo "=================================================="
 echo "🍛 Bong Hneshel — Backend Startup (Port: $PORT)"
 echo "=================================================="
 
-# 1. Check if backend is already running
+# 0. Check if already managed and running under systemd
+if command -v systemctl >/dev/null 2>&1 && sudo systemctl is-active --quiet bong-hneshel; then
+  echo "ℹ️  Backend is active and running under systemd (bong-hneshel.service)."
+  echo "👉 View status:  sudo systemctl status bong-hneshel"
+  echo "👉 Restart:      sudo systemctl restart bong-hneshel"
+  echo "👉 Stop:         sudo systemctl stop bong-hneshel"
+  exit 0
+fi
+
+# 1. Check if backend is already running via PID file
 if [ -f "$PID_FILE" ]; then
   OLD_PID=$(cat "$PID_FILE")
   if ps -p "$OLD_PID" > /dev/null 2>&1; then
@@ -29,6 +38,7 @@ if [ -f "$PID_FILE" ]; then
   fi
 fi
 
+# 2. Check if port is already in use
 PORT_PID=$(lsof -ti :$PORT 2>/dev/null || true)
 if [ -n "$PORT_PID" ]; then
   echo "⚠️  Port $PORT is already in use by PID: $PORT_PID"
@@ -36,14 +46,16 @@ if [ -n "$PORT_PID" ]; then
   exit 0
 fi
 
-# 3. Check Virtual Environment (Python 3.12 preferred)
-if [ ! -d "$VENV_DIR" ]; then
+# 3. Check Virtual Environment (Python 3.12 preferred, auto-heal if broken)
+if [ ! -d "$VENV_DIR" ] || [ ! -f "$VENV_DIR/bin/uvicorn" ]; then
   PYTHON_BIN="python3"
   if command -v python3.12 >/dev/null 2>&1; then
     PYTHON_BIN="python3.12"
   fi
-  echo "📦 Creating virtual environment using $PYTHON_BIN..."
-  $PYTHON_BIN -m venv "$VENV_DIR"
+  echo "📦 Setting up virtual environment using $PYTHON_BIN..."
+  if [ ! -d "$VENV_DIR" ]; then
+    $PYTHON_BIN -m venv "$VENV_DIR"
+  fi
   "$VENV_DIR/bin/pip" install --upgrade pip
   "$VENV_DIR/bin/pip" install -r "$DIR/requirements.txt"
 fi
@@ -57,9 +69,15 @@ else
   LAN_IP="localhost"
 fi
 
-# 5. Start Uvicorn Server in Background
+# 5. Configure reload option (enabled in development, disabled if explicitly off)
+RELOAD_FLAG="--reload"
+if [ "${NO_RELOAD}" = "1" ] || [ -f "/etc/systemd/system/bong-hneshel.service" ]; then
+  RELOAD_FLAG=""
+fi
+
+# 6. Start Uvicorn Server in Background
 echo "🚀 Starting FastAPI on 0.0.0.0:$PORT..."
-nohup "$VENV_DIR/bin/uvicorn" server:app --host 0.0.0.0 --port $PORT --reload > "$LOG_FILE" 2>&1 &
+nohup "$VENV_DIR/bin/uvicorn" server:app --host 0.0.0.0 --port $PORT $RELOAD_FLAG > "$LOG_FILE" 2>&1 &
 SERVER_PID=$!
 echo "$SERVER_PID" > "$PID_FILE"
 
@@ -81,4 +99,3 @@ else
   rm -f "$PID_FILE"
   exit 1
 fi
-
