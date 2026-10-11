@@ -39,7 +39,7 @@ const GUEST_ADDRESS_KEY = "curryco.guest_address.v1";
 type Quote = {
   subtotal_cents: number; delivery_fee_cents: number; discount_cents: number;
   referral_discount_cents?: number;
-  points_redeemed_cents: number; total_cents: number; coupon_code: string | null; points_available: number;
+  points_redeemed_cents: number; total_cents: number; coupon_code: string | null; coupon_error?: string | null; points_available: number;
   tax_cents?: number; tax_label?: string; tax_enabled?: boolean;
   delivery_distance_km?: number | null; delivery_fee_tier?: string;
   delivery_time_window?: string; delivery_condo_policy?: string;
@@ -545,6 +545,14 @@ export default function CartScreen() {
                       <Text style={styles.couponRemove}>Remove</Text>
                     </TouchableOpacity>
                   </View>
+                ) : (!!couponCode && !!quote?.coupon_error) ? (
+                  <View style={styles.couponErrorRow} testID="cart-coupon-error">
+                    <Ionicons name="alert-circle" size={15} color={colors.danger} />
+                    <Text style={styles.couponErr}>{quote.coupon_error}</Text>
+                    <TouchableOpacity testID="cart-coupon-clear" onPress={() => setCouponCode("")} hitSlop={8}>
+                      <Text style={styles.couponRemove}>Clear</Text>
+                    </TouchableOpacity>
+                  </View>
                 ) : null}
                 {publicSettings?.loyalty_enabled !== false && (() => {
                   const redeemStep = Math.max(1, publicSettings?.loyalty_redeem_points_per_dollar || 100);
@@ -777,6 +785,8 @@ const styles = StyleSheet.create({
   couponOK: { color: colors.success, fontWeight: "700", fontSize: 12 },
   couponApplied: { marginTop: spacing.sm, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   couponRemove: { color: colors.primary, fontWeight: "700", fontSize: 12 },
+  couponErrorRow: { marginTop: spacing.sm, flexDirection: "row", alignItems: "center", gap: 6 },
+  couponErr: { flex: 1, color: colors.danger, fontWeight: "700", fontSize: 12 },
   pointsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
   pointsLabel: { color: colors.text, fontSize: 13, fontWeight: "700", flexShrink: 1 },
   pointsSub: { color: colors.textMuted, fontSize: 11, marginTop: 2 },

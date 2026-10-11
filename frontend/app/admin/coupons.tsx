@@ -40,6 +40,13 @@ export default function AdminCoupons() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
+  const [redeem, setRedeem] = useState<{ code: string; loading: boolean; data: any | null } | null>(null);
+
+  const openRedemptions = async (c: Coupon) => {
+    setRedeem({ code: c.code, loading: true, data: null });
+    const r = await adminApi.get<any>(`/admin/coupons/${encodeURIComponent(c.code)}/redemptions`);
+    setRedeem({ code: c.code, loading: false, data: r.ok ? r.data : { redemptions: [], count: 0, error: r.error } });
+  };
 
   const load = useCallback(async () => {
     const r = await adminApi.get<{ coupons: Coupon[] }>("/admin/coupons");
@@ -183,6 +190,10 @@ export default function AdminCoupons() {
                   <Ionicons name="create-outline" size={16} color={colors.text} />
                   <Text style={styles.actionText}>Edit</Text>
                 </TouchableOpacity>
+                <TouchableOpacity testID={`coupon-redemptions-${c.code}`} onPress={() => openRedemptions(c)} style={styles.actionBtn}>
+                  <Ionicons name="people-outline" size={16} color={colors.text} />
+                  <Text style={styles.actionText}>Redemptions</Text>
+                </TouchableOpacity>
                 <TouchableOpacity testID={`coupon-delete-${c.code}`} onPress={() => confirmDelete(c)} style={[styles.actionBtn, styles.deleteBtn]}>
                   <Ionicons name="trash-outline" size={16} color={colors.danger} />
                   <Text style={[styles.actionText, { color: colors.danger }]}>Delete</Text>
@@ -272,6 +283,58 @@ export default function AdminCoupons() {
           </View>
         </View>
       </Modal>
+
+      {/* Redemptions modal */}
+      <Modal visible={!!redeem} transparent animationType="fade" onRequestClose={() => setRedeem(null)}>
+        <View style={styles.modalBg}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Redemptions · {redeem?.code}</Text>
+              <TouchableOpacity testID="coupon-redemptions-close" onPress={() => setRedeem(null)}>
+                <Ionicons name="close" size={24} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            {redeem?.loading ? (
+              <ActivityIndicator color={colors.primary} style={{ paddingVertical: spacing.xl }} />
+            ) : (
+              <>
+                <View style={styles.redeemStats}>
+                  <Text style={styles.redeemStat}>{redeem?.data?.count ?? 0} redemption{(redeem?.data?.count === 1) ? "" : "s"}</Text>
+                  <Text style={styles.redeemStatDot}>·</Text>
+                  <Text style={styles.redeemStat}>{redeem?.data?.unique_customers ?? 0} customer{(redeem?.data?.unique_customers === 1) ? "" : "s"}</Text>
+                  <Text style={styles.redeemStatDot}>·</Text>
+                  <Text style={styles.redeemStat}>${(((redeem?.data?.total_discount_cents ?? 0)) / 100).toFixed(2)} given</Text>
+                </View>
+                <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+                  {(redeem?.data?.redemptions?.length ?? 0) === 0 ? (
+                    <View style={styles.empty}>
+                      <Ionicons name="people-outline" size={34} color={colors.textMuted} />
+                      <Text style={styles.emptyText}>No one has redeemed this coupon yet.</Text>
+                    </View>
+                  ) : (
+                    redeem!.data.redemptions.map((r: any, i: number) => (
+                      <View key={r.order_id || i} style={styles.redeemRow} testID={`redemption-row-${i}`}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.redeemName}>{r.name}</Text>
+                          <Text style={styles.redeemSub}>{r.email || r.phone || "—"}</Text>
+                          <Text style={styles.redeemMeta}>
+                            {r.order_id} · {r.created_at ? new Date(r.created_at).toLocaleDateString() : ""} · {r.status}
+                          </Text>
+                        </View>
+                        <View style={{ alignItems: "flex-end" }}>
+                          <Text style={styles.redeemSaved}>-${(r.discount_cents / 100).toFixed(2)}</Text>
+                          <Text style={styles.redeemSub}>${(r.total_cents / 100).toFixed(2)} total</Text>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </ScrollView>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </AdminShell>
   );
 }
@@ -324,4 +387,12 @@ const styles = StyleSheet.create({
   toggleSub: { color: colors.textMuted, fontSize: 12 },
   saveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.primary, paddingVertical: 15, borderRadius: radius.pill, ...shadows.card },
   saveBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
+  redeemStats: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  redeemStat: { color: colors.text, fontWeight: "800", fontSize: 12 },
+  redeemStatDot: { color: colors.textMuted },
+  redeemRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
+  redeemName: { color: colors.text, fontWeight: "800", fontSize: 14 },
+  redeemSub: { color: colors.textMuted, fontSize: 12 },
+  redeemMeta: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
+  redeemSaved: { color: colors.success, fontWeight: "800", fontSize: 14 },
 });

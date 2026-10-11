@@ -11,6 +11,7 @@ export default function AdminLayout() {
       <Stack.Screen name="catering" />
       <Stack.Screen name="orders" />
       <Stack.Screen name="coupons" />
+      <Stack.Screen name="reviews" />
       <Stack.Screen name="billing" />
       <Stack.Screen name="settings" />
     </Stack>

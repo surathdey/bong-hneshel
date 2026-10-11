@@ -336,3 +336,54 @@ Spec: referrer earns points on friend's FIRST PAID order; friend gets a first-or
 - Verified: testing_agent iteration_10 — backend 19/19 pytest + all frontend/admin flows. Tests: `backend/tests/test_referrals_iter10.py`.
 - Follow-up: coupon vs referral discounts now shown SEPARATELY at checkout. Quote/order return `discount_cents` (coupon only, labeled with coupon code) + new `referral_discount_cents` ("Referral bonus" line). Order model gained `referral_discount_cents`. Cart summary + tax denominator updated. Verified via curl (WELCOME20 20% = 400 + referral 10% = 200 shown separately on a $20 subtotal).
 - Follow-up 2 (iteration_11): (A) invite banner on `/email-auth?ref=CODE` ("You were invited — enjoy X% off…"), (B) Bag `cart-savings` "You saved $X today" combining coupon+referral+points, (C) Admin `/admin/referrals` leaderboard (top referrers) + `GET /api/admin/referrals/leaderboard`, (D) Profile `profile-referral-bonus` card under loyalty balance (available/used) via extended `/referrals/me` (`you_were_referred`, `your_bonus_status`), (E) one-time bonus confirmed (first-order-only discount, idempotent reward, single referral link). Verified: testing_agent iteration_11 8/8 backend + 5/5 frontend. Tests: `backend/tests/test_referrals_iter11.py`.
+
+---
+## Web-bundle freshness guarantee (2026-06)
+Root cause of "production shows stale UI": prod serves the committed `backend/web_dist/` (preferred over preview `frontend/dist/`), and the old `_try_build_web_bundle` fast-path never rebuilt when a stale prod bundle already existed — so the Sep-16 bundle (no Referrals/email-login/etc.) kept serving until manually rebuilt.
+Fix (server.py, near SPA serving): fingerprint the frontend source (`app/`+`src/`+`app.config.js`/`brand.config.js`/`package.json`) → `_frontend_source_hash()`, stored as marker `backend/web_dist/.source_hash`. On startup `_maybe_schedule_web_refresh()` compares marker to live source; on mismatch it rebuilds in a background thread (`_do_web_export_and_mirror`, atomic dir swap) and writes the new marker. Result: (a) every deploy self-heals to latest code if stale, (b) dev backend restarts after a frontend change keep committed `web_dist` continuously fresh. Diagnostic `GET /api/health/web-bundle` now returns `committed_marker`, `current_source_hash`, `bundle_matches_source`. Confirmed `bundle_matches_source: true` with Referrals present.
+NOTE for future agents: after any frontend change, restarting the backend auto-refreshes `web_dist`; verify `bundle_matches_source: true` before telling the user to publish.
+
+---
+## Coupon error surfacing (2026-06)
+Bug: applying an unusable coupon (first-order-only after already ordering, invalid, ineligible, below min-order) silently gave 0 discount with NO message — user confused. Fix: `_apply_coupon` now returns `(discount, code, error)` with friendly reasons ("You've already used this first-order coupon.", "This coupon code isn't valid.", "Sign in to use this first-order coupon.", "Add $X more to use this coupon."). `/orders/quote` returns `coupon_error`; cart shows a red `cart-coupon-error` row (with Clear) mutually exclusive with the green applied row. Verified: testing_agent iteration_12 (6/6 backend + 3/3 frontend). Tests: `backend/tests/test_coupon_error_iter12.py`.
+
+---
+## Coupon redemptions view (2026-06)
+Admin → Coupons: each coupon card has a new "Redemptions" button opening a modal listing customers who used it. Backend `GET /api/admin/coupons/{code}/redemptions` (admin-gated) queries non-cancelled orders with that `coupon_code`, joins `users` for name/email, returns rows (name, email, phone, order_id, discount_cents, total_cents, status, created_at) + summary (count, unique_customers, total_discount_cents). Frontend `admin/coupons.tsx` shows summary header + scrollable list. Verified via curl (WELCOME20 → 4 redemptions, 401 unauth) + admin UI screenshot. web_dist refreshed, bundle_matches_source true.
+
+---
+## Admin customer address + single-add form (2026-06)
+- **New Order modal** (`src/components/NewOrderModal.tsx`): the "Add new customer" sub-form now includes address fields (street, unit, city, province, postal) bound to the shared order `address` state → saved as the customer's `default_address` and used as the order delivery address. Province field also added to the Delivery-step address form; `address` state gained `province` (default "ON").
+- **Customers page** (`app/admin/customers.tsx`): new **"Add Customer"** button + modal form (name*, phone*, email, full address) → `POST /api/admin/customers` (backend already supported `address`). Verified live: form renders, backend stores `default_address`.
+
+## Admin Customer CSV import (2026-06)
+- `POST /api/admin/customers/bulk-upload` (admin-gated, multipart CSV). Flexible headers (first_name/last_name/email/phone/address|line1/line2/city/province|state/postal_code|zip/country). Stores name="First Last", address as `default_address`, role=customer, loyalty_points=0, `source="admin_import"`. Phone normalized to E.164 (+1 for 10-digit CA). De-dupes by email or phone (returns inserted/skipped/errors). Idempotent.
+- Frontend: Admin → Customers has an **"Import CSV"** button (`app/admin/customers.tsx`, expo-document-picker + multipart fetch).
+- Seeded 9 Bong Hneshel customers into PREVIEW DB from `/app/memory/bong_hneshel_customers.csv`. NOTE: this workspace uses a LOCAL mongo (mongodb://localhost) — NOT the live production DB. To load into production the user uploads the same CSV from the DEPLOYED admin after publishing.
+
+## Admin New Order — custom dishes + full confirmation flow (2026-06)
+- **Custom dish**: New Order modal now has a 4th item mode **"Custom"** (`src/components/NewOrderModal.tsx`) — admin types a dish name + price (CA$) and taps "Add custom dish"; it's added to the cart like any item. Backend: `OrderItemIn` gained `custom_name` + `custom_price_cents`, and `_resolve_items` handles `kind == "custom"` (ref_id "", no master link). Verified via `tests/test_admin_custom_order.py`.
+- **Confirmation flow for admin orders**: `/admin/orders/create` now calls `_notify_order_created` after creation/driver-assignment → same customer Email + SMS (invoice link, items, loyalty lines) and owner Email + SMS (with items) as mobile checkout. `_payment_note` enhanced: `payment_status == "paid"` → "Payment received — CA$X paid in full." else COD/Interac instructions.
+
+## Delivery SMS to customers (2026-06)
+- `_notify_customer_eta` now SMSes **all** customers (was guest-only) with tracking link + ETA + approx clock time (America/Toronto). Sent on START DELIVERY (tentative; first stop exact) and when a stop is delivered the next customer gets an exact "you're next" SMS (once, `exact_eta_sent`). On `delivered`, customer also gets a confirmation SMS. Verified via `tests/test_delivery_eta_sms.py`.
+
+## Loyalty details in SMS (2026-06)
+- Customer confirmation SMS shows "Loyalty used: N pts (saved CA$X)" + trailing "You have N loyalty points remaining (~CA$Y)." (account holders). Owner SMS lists ordered items. Verified via `tests/test_sms_loyalty.py`.
+
+## Review Management System (2026-06)
+Spec (user choices 1b/2a/3b/4b): delivery-triggered, token link no-login, moderated-but-customer-blind, CSV bulk upload, stars + optional comment.
+- **Backend** (`server.py`, REVIEWS block before include_router): new collections `reviews` {review_id, order_id, user_id, item_id, item_name, rating(1-5), comment, customer_name, status(pending|approved|rejected), source(customer|admin_bulk), created_at} and `review_requests` {token, order_id, user_id, items[], send_after, status(scheduled|sent|submitted), customer_name, phone, email, public_base_url}.
+  - `_schedule_review_request(order)` fires from BOTH delivered hooks: delivery-partner `POST /delivery/orders/{id}/status` (status=delivered) and admin `POST /orders/{id}/status` (status=delivered). Creates/refreshes a token, `send_after = delivered + review_request_delay_days`. Idempotent (skips if already sent/submitted).
+  - Background `_review_sweep_loop()` (300s) + immediate `asyncio.create_task(_sweep_due_review_requests())` on schedule. Sends the token link via Email (Resend) + SMS (Twilio owner settings). `delay_days=0` sends on next sweep (~immediate).
+  - Public: `GET /api/reviews/request/{token}`, `POST /api/reviews/submit` (stores status=pending — MODERATION; always returns generic "posted"; idempotent), `GET /api/menu-items/{item_id}/reviews` (approved only), `GET /api/reviews/summary?item_ids=a,b`.
+  - Admin: `GET /api/admin/reviews?status=`, `POST /api/admin/reviews/{id}/moderate` (approve|reject), `DELETE /api/admin/reviews/{id}`, `POST /api/admin/reviews/bulk-upload` (CSV: item_id|item_name,rating,comment,customer_name → approved, source=admin_bulk; errors[] for bad rows).
+  - Menu enrichment: `_hydrate_menu` + `/menu/anytime` items now carry `avg_rating` + `review_count` (approved only, via `_attach_ratings`/`_ratings_map` aggregation).
+  - `BusinessSettings`: `reviews_enabled` (default True) + `review_request_delay_days` (default 1). Public `/settings` exposes `reviews_enabled`. Startup indexes for reviews + review_requests.
+- **Frontend**:
+  - `app/review/[token].tsx` — public no-login page: dish cards (image + name), 1-5 star selector + optional comment, submit → customer-blind success screen. Registered in `app/_layout.tsx`.
+  - `app/admin/reviews.tsx` — Pending/Approved/Rejected tabs (counts), approve/reject/delete, CSV bulk upload via `expo-document-picker` (multipart fetch). Added to `AdminShell` nav + `admin/_layout.tsx`.
+  - `src/components/ItemReviews.tsx` — `RatingBadge` + `ReviewsModal`; wired into customer Menu tab (à la carte + Always Available rows show pill + "See reviews").
+  - `app/admin/settings.tsx` — Reviews section (enable toggle + delay-days field).
+- Verified: testing_agent iteration_13 — backend 27/27 pytest (`tests/test_reviews_iteration13.py`) incl. delivered-trigger end-to-end + moderation-hides-pending + CSV; frontend 5/5 UI flows. No functional bugs. Smoke test `tests/test_reviews_smoke.py`.
+

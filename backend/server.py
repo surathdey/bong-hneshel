@@ -392,6 +392,13 @@ class BusinessSettings(BaseModel):
     referral_reward_points: int = 100
     referral_friend_discount_type: str = "percent"   # "percent" | "fixed"
     referral_friend_discount_value: int = 10          # percent (0-100) OR cents
+    # ----- Reviews / ratings program -----
+    # A token-gated review link is texted + emailed to the customer
+    # `review_request_delay_days` days after their order is delivered. Customer
+    # reviews land in an admin moderation queue (customer is NOT told); only
+    # admin-approved reviews appear publicly on menu items.
+    reviews_enabled: bool = True
+    review_request_delay_days: int = 1
     # Per-payment-method configuration.
     # Card (Stripe) shows Apple Pay / Google Pay / cards on the hosted page.
     payment_methods: Dict[str, PaymentMethodConfig] = Field(default_factory=lambda: {
@@ -475,12 +482,14 @@ class CateringSelection(BaseModel):
 
 
 class OrderItemIn(BaseModel):
-    kind: str  # "menu" | "catering" | "weekly_package"
-    ref_id: str  # item_id | package_id | weekly_menu_id
+    kind: str  # "menu" | "catering" | "weekly_package" | "custom"
+    ref_id: str  # item_id | package_id | weekly_menu_id | "" for custom
     quantity: int
     catering_guest_count: Optional[int] = None  # for catering only
     catering_selections: Optional[CateringSelection] = None
     package_selections: Optional[List[str]] = None  # weekly_package master_ids picked
+    custom_name: Optional[str] = None            # for kind == "custom" (admin-entered dish)
+    custom_price_cents: Optional[int] = None     # for kind == "custom"
 
 
 class Address(BaseModel):
@@ -1143,6 +1152,7 @@ async def _hydrate_menu(doc: dict) -> dict:
     # If there are also legacy embedded items, keep them appended for back-compat.
     inflated.extend(doc.get("items", []) or [])
     out = dict(doc)
+    await _attach_ratings(inflated)
     out["items"] = inflated
     # Resolve complimentary items (display-only). Week-level list takes priority,
     # falling back to the legacy package-level list. Shown to customers ONLY when
@@ -1242,6 +1252,7 @@ async def menu_anytime():
             "allergens": m.get("allergens", []),
             "is_featured": False,
         })
+    await _attach_ratings(out)
     return out
 
 
@@ -1330,26 +1341,28 @@ async def promo_coupon():
 
 
 async def _apply_coupon(code: Optional[str], subtotal: int, user):
-    """Validate a coupon for this user/order and return (discount_cents, code_or_None).
-    Enforces min-order and first-time-only (logged-in, no prior orders) rules."""
+    """Validate a coupon for this user/order and return (discount_cents, code_or_None, error_or_None).
+    Enforces min-order and first-time-only (logged-in, no prior orders) rules.
+    `error` is a customer-friendly reason when a provided code could NOT be applied."""
     if not code:
-        return 0, None
+        return 0, None, None
     c = await db.coupons.find_one({"code": code.upper(), "active": True}, {"_id": 0})
     if not c:
-        return 0, None
-    if subtotal < int(c.get("min_order_cents", 0) or 0):
-        return 0, None
+        return 0, None, "This coupon code isn't valid."
+    min_order = int(c.get("min_order_cents", 0) or 0)
+    if subtotal < min_order:
+        return 0, None, f"Add {'${:.2f}'.format(min_order / 100)} more to use this coupon."
     if c.get("first_time_only"):
         if getattr(user, "role", "customer") == "guest":
-            return 0, None
+            return 0, None, "Sign in to use this first-order coupon."
         prior = await db.orders.count_documents({"user_id": user.user_id, "status": {"$ne": "cancelled"}})
         if prior > 0:
-            return 0, None
+            return 0, None, "You've already used this first-order coupon."
     if c["discount_type"] == "percent":
         discount = subtotal * int(c["value"]) // 100
     else:
         discount = min(int(c["value"]), subtotal)
-    return discount, c["code"]
+    return discount, c["code"], None
 
 
 @api.get("/coupons/{code}")
@@ -1914,6 +1927,20 @@ async def _resolve_items(items: List[OrderItemIn]):
                 "weekly_menu_id": it.ref_id,
                 "weekly_menu_week_start": wm.get("week_start"),
             }
+        elif it.kind == "custom":
+            # Admin-entered one-off dish: just a name + price, no master link.
+            name = (it.custom_name or "").strip() or "Custom item"
+            unit = max(0, int(it.custom_price_cents or 0))
+            qty = max(1, int(it.quantity or 1))
+            line = {
+                "kind": "custom",
+                "ref_id": "",
+                "name": name,
+                "unit_price_cents": unit,
+                "quantity": qty,
+                "image_url": "",
+                "line_total_cents": unit * qty,
+            }
         else:
             raise HTTPException(400, f"Unknown item kind {it.kind}")
         subtotal += line["line_total_cents"]
@@ -2003,7 +2030,7 @@ def _tax_enabled_for_method(settings: dict, payment_method: str) -> bool:
 async def order_quote(req: QuoteOrderReq, user: User = Depends(_current_user)):
     snaps, subtotal = await _resolve_items(req.items)
     settings = await _get_settings()
-    discount, coupon = await _apply_coupon(req.coupon_code, subtotal, user)
+    discount, coupon, coupon_err = await _apply_coupon(req.coupon_code, subtotal, user)
     referral_discount = max(0, min(await _referral_discount(user, subtotal, settings), subtotal - discount))
     total_discount = discount + referral_discount
     _pts_used, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - total_discount))
@@ -2027,6 +2054,7 @@ async def order_quote(req: QuoteOrderReq, user: User = Depends(_current_user)):
         "points_redeemed_cents": points_redeem_cents,
         "total_cents": total,
         "coupon_code": coupon,
+        "coupon_error": coupon_err,
         "items_snapshot": snaps,
         "points_available": user.loyalty_points,
     }
@@ -2049,7 +2077,7 @@ async def create_order(req: CreateOrderReq, request: Request, user: User = Depen
         )
     snaps, subtotal = await _resolve_items(req.items)
     settings = await _get_settings()
-    discount, coupon_code = await _apply_coupon(req.coupon_code, subtotal, user)
+    discount, coupon_code, _coupon_err = await _apply_coupon(req.coupon_code, subtotal, user)
     referral_discount = max(0, min(await _referral_discount(user, subtotal, settings), subtotal - discount))
     total_discount = discount + referral_discount
     points_redeem, points_redeem_cents = _compute_redemption(settings, user, req.redeem_points, max(0, subtotal - total_discount))
@@ -2491,6 +2519,10 @@ async def update_order_status(order_id: str, upd: OrderStatusUpdate, admin=Depen
         )
     except Exception:
         pass
+    if upd.status == "delivered":
+        fresh = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+        if fresh:
+            await _schedule_review_request(fresh)
     return {"ok": True}
 
 
@@ -3312,6 +3344,7 @@ async def public_settings():
         "referral_reward_points": int(s.get("referral_reward_points", 0) or 0),
         "referral_friend_discount_type": s.get("referral_friend_discount_type", "percent"),
         "referral_friend_discount_value": int(s.get("referral_friend_discount_value", 0) or 0),
+        "reviews_enabled": bool(s.get("reviews_enabled", True)),
         "home_hero_tagline": s.get("home_hero_tagline", "Order anytime this week — we deliver every weekend."),
         # Expose ONLY safe payment-method fields (never secret keys) so the customer app
         # can render the right method list, apply per-method tax, and show Interac email.
@@ -3422,6 +3455,46 @@ async def admin_delete_coupon(code: str, admin=Depends(_current_admin)):
     if r.deleted_count == 0:
         raise HTTPException(404, "Coupon not found")
     return {"ok": True}
+
+
+@api.get("/admin/coupons/{code}/redemptions")
+async def admin_coupon_redemptions(code: str, admin=Depends(_current_admin)):
+    """List customers who redeemed a given coupon (one row per order that used it)."""
+    c = (code or "").strip().upper()
+    orders = await db.orders.find(
+        {"coupon_code": c, "status": {"$ne": "cancelled"}},
+        {"_id": 0, "order_id": 1, "user_id": 1, "phone": 1, "discount_cents": 1,
+         "total_cents": 1, "status": 1, "created_at": 1},
+    ).sort("created_at", -1).to_list(1000)
+    user_ids = list({o["user_id"] for o in orders if o.get("user_id")})
+    users: dict = {}
+    if user_ids:
+        async for u in db.users.find(
+            {"user_id": {"$in": user_ids}},
+            {"_id": 0, "user_id": 1, "name": 1, "email": 1},
+        ):
+            users[u["user_id"]] = u
+    rows = []
+    for o in orders:
+        u = users.get(o.get("user_id"), {})
+        rows.append({
+            "order_id": o.get("order_id"),
+            "name": u.get("name") or "Guest",
+            "email": u.get("email") or "",
+            "phone": o.get("phone") or "",
+            "discount_cents": int(o.get("discount_cents", 0) or 0),
+            "total_cents": int(o.get("total_cents", 0) or 0),
+            "status": o.get("status"),
+            "created_at": o.get("created_at"),
+        })
+    total_discount = sum(r["discount_cents"] for r in rows)
+    return {
+        "code": c,
+        "count": len(rows),
+        "unique_customers": len(user_ids),
+        "total_discount_cents": total_discount,
+        "redemptions": rows,
+    }
 
 
 @api.get("/admin/master-menu")
@@ -4345,6 +4418,117 @@ async def admin_create_customer(payload: AdminCustomerIn, admin=Depends(_current
     return {"user_id": user_id, "existed": False, "user": doc}
 
 
+def _normalize_phone_ca(raw: str) -> str:
+    """Best-effort E.164 for Canadian numbers so SMS can be delivered."""
+    import re as _re
+    s = (raw or "").strip()
+    digits = _re.sub(r"\D", "", s)
+    if not digits:
+        return ""
+    if len(digits) == 10:
+        return "+1" + digits
+    if len(digits) == 11 and digits.startswith("1"):
+        return "+" + digits
+    return ("+" + digits) if not s.startswith("+") else ("+" + digits)
+
+
+@api.post("/admin/customers/bulk-upload")
+async def admin_bulk_upload_customers(file: UploadFile = File(...), admin=Depends(_current_admin)):
+    """Bulk-import customers from a CSV (header row required). Recognised columns
+    (case/spacing-insensitive): first_name, last_name, email, phone, address/line1,
+    line2, city, province/state, postal_code/zip, country. Name is stored as
+    "First Last", the address becomes the customer's default address, role=customer,
+    loyalty_points=0. Duplicates (by email or phone) are skipped."""
+    import csv as _csv2, io as _io2
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except Exception:
+        text = raw.decode("latin-1", errors="ignore")
+    reader = _csv2.DictReader(_io2.StringIO(text))
+
+    # map many possible header spellings → canonical keys
+    SYN = {
+        "first_name": ["first_name", "first", "firstname", "given_name", "fname"],
+        "last_name": ["last_name", "last", "lastname", "surname", "lname", "family_name"],
+        "email": ["email", "email_address", "e_mail", "mail"],
+        "phone": ["phone", "phone_number", "mobile", "cell", "contact", "phone_no", "mobile_number"],
+        "line1": ["address", "address_1", "address_line_1", "line1", "address_line1", "street", "street_address", "addr1"],
+        "line2": ["address_2", "address_line_2", "line2", "address_line2", "apt", "unit", "suite", "addr2"],
+        "city": ["city", "town"],
+        "province": ["province", "state", "region"],
+        "postal_code": ["postal_code", "postal", "zip", "zip_code", "postcode", "zipcode"],
+        "country": ["country", "nation"],
+    }
+    def canon(key: str) -> Optional[str]:
+        k = (key or "").strip().lower().replace(" ", "_").replace("-", "_")
+        for canonical, alts in SYN.items():
+            if k in alts:
+                return canonical
+        return None
+
+    inserted, skipped = 0, 0
+    errors: List[str] = []
+    for idx, row in enumerate(reader, start=2):
+        rec: dict = {}
+        for k, v in (row or {}).items():
+            ck = canon(k)
+            if ck:
+                rec[ck] = (v or "").strip()
+        name = f"{rec.get('first_name','')} {rec.get('last_name','')}".strip()
+        email = (rec.get("email") or "").strip().lower()
+        phone = _normalize_phone_ca(rec.get("phone") or "")
+        if not name and not email and not phone:
+            continue  # blank line
+        if not name:
+            name = email.split("@")[0] if email else (phone or "Customer")
+        if not email and not phone:
+            errors.append(f"Row {idx}: needs an email or phone to identify the customer")
+            continue
+        # de-dupe
+        existing = None
+        if email:
+            existing = await db.users.find_one({"email": email}, {"_id": 0, "user_id": 1})
+        if not existing and phone:
+            existing = await db.users.find_one({"phone": phone}, {"_id": 0, "user_id": 1})
+        if existing:
+            skipped += 1
+            continue
+        addr = None
+        if rec.get("line1") or rec.get("line2") or rec.get("city") or rec.get("postal_code"):
+            addr = {
+                "name": name,
+                "email": email,
+                "line1": rec.get("line1", ""),
+                "line2": rec.get("line2", ""),
+                "city": rec.get("city") or "",
+                "province": rec.get("province") or "ON",
+                "postal_code": (rec.get("postal_code") or "").upper().replace(" ", ""),
+                "country": rec.get("country") or "Canada",
+                "instructions": "",
+            }
+        doc = {
+            "user_id": f"user_{uuid.uuid4().hex[:12]}",
+            "name": name,
+            "role": "customer",
+            "loyalty_points": 0,
+            "created_at": datetime.now(timezone.utc),
+            "default_address": addr,
+            "source": "admin_import",
+        }
+        if email:
+            doc["email"] = email
+        if phone:
+            doc["phone"] = phone
+        await db.users.insert_one(doc)
+        inserted += 1
+
+    return {"ok": True, "inserted": inserted, "skipped": skipped,
+            "error_count": len(errors), "errors": errors[:50]}
+
+
+
+
 @api.get("/admin/order-builder")
 async def admin_order_builder(admin=Depends(_current_admin)):
     """One-shot helper: returns everything the admin needs to build a new order.
@@ -4599,6 +4783,16 @@ async def admin_create_manual_order(req: AdminCreateOrderReq, admin=Depends(_cur
         order_doc["delivery_partner_id"] = partner["partner_id"]
         order_doc["delivery_status"] = "assigned"
         order_doc["status"] = "packed"
+
+    # 5) Fire the full order-confirmation flow (customer email + SMS and owner
+    # email + SMS) — identical templates to the mobile checkout, incl. invoice
+    # link + payment status. Best-effort: never fail the order on a send error.
+    try:
+        fresh = await db.orders.find_one({"order_id": order_doc["order_id"]}, {"_id": 0}) or order_doc
+        u = await db.users.find_one({"user_id": user_doc["user_id"]}, {"_id": 0}) or user_doc
+        await _notify_order_created(fresh, settings, u)
+    except Exception as e:
+        log.warning(f"[admin.order.notify] {e}")
 
     return {"ok": True, "order": order_doc,
             "customer": {"user_id": user_doc["user_id"],
@@ -5442,6 +5636,9 @@ def _order_items_text(order: dict) -> str:
 def _payment_note(order: dict, settings: dict) -> str:
     pm = order.get("payment_method")
     total = order.get("total_cents", 0) / 100
+    # Already settled (card paid, or admin marked paid) → say so clearly.
+    if order.get("payment_status") == "paid":
+        return f"Payment received — CA${total:.2f} paid in full. Thank you!"
     if pm == "cod":
         return f"Cash on Delivery — please keep CA${total:.2f} ready for the driver."
     if pm == "interac":
@@ -5468,6 +5665,23 @@ async def _notify_order_created(order: dict, settings: dict, user_doc: dict):
     pay_note = _payment_note(order, settings)
     invoice_url = _invoice_link(order)
     ref = oid[-6:].upper()
+
+    # ----- Loyalty details for the SMS (points used this order + remaining balance) -----
+    redeem_rate = max(1, int(settings.get("loyalty_redeem_points_per_dollar", 100) or 100))
+    loyalty_enabled = bool(settings.get("loyalty_enabled", True))
+    pts_used = int(order.get("points_redeemed", 0) or 0)
+    pts_used_cents = int(order.get("points_redeemed_cents", 0) or 0)
+    is_guest = (user_doc or {}).get("role") == "guest"
+    balance_pts = int((user_doc or {}).get("loyalty_points", 0) or 0)
+    balance_worth_cents = (balance_pts * 100) // redeem_rate
+    loyalty_used_line = (
+        f"Loyalty used: {pts_used} pts (saved CA${pts_used_cents/100:.2f})\n"
+        if pts_used > 0 else ""
+    )
+    balance_note = (
+        f"You have {balance_pts} loyalty points remaining (~CA${balance_worth_cents/100:.2f}).\n"
+        if (loyalty_enabled and not is_guest) else ""
+    )
 
     # ---- Customer email (Resend) ----
     try:
@@ -5499,9 +5713,11 @@ async def _notify_order_created(order: dict, settings: dict, user_doc: dict):
             f"We're delighted to cook for you and can't wait to serve you.\n\n"
             f"Order #{ref}\n"
             f"{items_txt}\n"
+            f"{loyalty_used_line}"
             f"Total: CA${total:.2f}\n"
             f"{pay_note}\n\n"
             f"Invoice: {invoice_url}\n\n"
+            f"{balance_note}"
             f"We'll keep you posted. Bon appetit!"
         )
         await _send_sms_via_settings(settings, cust_phone, body)
@@ -5531,35 +5747,59 @@ async def _notify_order_created(order: dict, settings: dict, user_doc: dict):
         logging.warning(f"[order.notify.owner_email] {e}")
     try:
         if owner_phone:
-            await _send_sms_via_settings(settings, owner_phone, f"{BRAND_NAME}: New order #{ref} from {cust}. Total CA${total:.2f} ({order.get('payment_method','').upper()}).")
+            await _send_sms_via_settings(
+                settings, owner_phone,
+                f"{BRAND_NAME}: New order #{ref} from {cust}. "
+                f"Total CA${total:.2f} ({order.get('payment_method','').upper()}).\n"
+                f"{items_txt}"
+            )
     except Exception as e:
         logging.warning(f"[order.notify.owner_sms] {e}")
 
 
 async def _notify_customer_eta(order: dict, settings: dict, exact: bool):
-    """Notify the customer of a delivery ETA. Registered users get an in-app push;
-    guests get an SMS with a tracking link. Best-effort (never raises)."""
+    """Notify the customer of a delivery ETA via SMS (+ in-app push).
+    `exact=False` → tentative "out for delivery" heads-up sent when the driver
+    sets out. `exact=True` → the customer is next ("1 stop away") so we send a
+    firm ETA with an approximate clock time. Best-effort (never raises)."""
     oid = order.get("order_id", "")
     eta_s = order.get("delivery_eta_seconds") or 0
     mins = max(1, round(eta_s / 60)) if eta_s else None
-    when = (f"in {mins} min" if mins else "shortly")
-    title = "Your order is on the way 🚗" if not exact else "Arriving soon 🛵"
-    msg = (f"Your {BRAND_NAME} order is out for delivery — arriving {('~' if not exact else '')}{when}."
-           if not exact else f"Your {BRAND_NAME} order is arriving {when}. Please be ready!")
     track_url = _track_link(order)
-    user_doc = await db.users.find_one({"user_id": order.get("user_id")}, {"_id": 0}) or {}
-    is_guest = (user_doc.get("role") == "guest")
+    first = ((order.get("address") or {}).get("name") or "there").split()[0]
+    # Approximate clock time (restaurant is in the GTA → America/Toronto).
+    clock = ""
+    if mins:
+        try:
+            from zoneinfo import ZoneInfo
+            arr = datetime.now(ZoneInfo("America/Toronto")) + timedelta(minutes=mins)
+            clock = arr.strftime("%-I:%M %p")
+        except Exception:
+            clock = ""
+    eta_txt = (f"in about {mins} min" + (f" (around {clock})" if clock else "")) if mins else ("shortly" if not exact else "very soon")
+
+    if exact:
+        title = "Arriving soon 🛵"
+        push_msg = f"Your {BRAND_NAME} order is arriving {eta_txt}. Please be ready!"
+        sms = (f"{BRAND_NAME}: Hi {first}, you're next! Your order is arriving {eta_txt}. "
+               f"Track live: {track_url}")
+    else:
+        title = "Your order is on the way 🚗"
+        push_msg = f"Your {BRAND_NAME} order is out for delivery — arriving {eta_txt}."
+        sms = (f"{BRAND_NAME}: Hi {first}, your order is out for delivery! "
+               f"Estimated arrival {eta_txt}. Track live: {track_url}")
+
     # In-app push (works on real builds; no-op otherwise)
     try:
         await send_push(recipients=[order.get("user_id")],
-                        data={"title": title, "message": msg, "action_url": f"/order/{oid}"})
+                        data={"title": title, "message": push_msg, "action_url": f"/order/{oid}"})
     except Exception as e:
         logging.warning(f"[eta.push] {e}")
-    # Guests: SMS with tracking link
-    if is_guest:
+    # SMS to every customer that has a phone number (registered or guest).
+    phone = order.get("phone") or ""
+    if phone:
         try:
-            await _send_sms_via_settings(settings, order.get("phone") or "",
-                                         f"{BRAND_NAME}: {msg} Track: {track_url}")
+            await _send_sms_via_settings(settings, phone, sms)
         except Exception as e:
             logging.warning(f"[eta.sms] {e}")
 
@@ -5614,11 +5854,28 @@ async def delivery_update_order_status(order_id: str, req: DeliveryStatusReq, pa
     logging.info(f"[push MOCK] order {order_id} status → {req.status}")
     if req.status == "delivered":
         fresh = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+        settings = await _get_settings()
         if fresh:
             await _notify_owner_delivered(fresh)
+            await _schedule_review_request(fresh)
+            # Customer "delivered" confirmation SMS (+ push).
+            try:
+                first = ((fresh.get("address") or {}).get("name") or "there").split()[0]
+                ref = (fresh.get("order_id", "")[-6:]).upper()
+                dmsg = (f"{BRAND_NAME}: Hi {first}, your order #{ref} has been delivered! "
+                        f"We hope you enjoy every bite. Thank you for ordering with us. 🙏")
+                try:
+                    await send_push(recipients=[fresh.get("user_id")],
+                                    data={"title": "Delivered ✅", "message": f"Your {BRAND_NAME} order has been delivered. Enjoy!",
+                                          "action_url": f"/order/{order_id}"})
+                except Exception:
+                    pass
+                if fresh.get("phone"):
+                    await _send_sms_via_settings(settings, fresh["phone"], dmsg)
+            except Exception as e:
+                logging.warning(f"[delivered.customer_sms] {e}")
         # The next stop is now "1 stop away" — send it an exact ETA (once).
         try:
-            settings = await _get_settings()
             nxt = await db.orders.find({
                 "delivery_partner_id": partner["partner_id"],
                 "delivery_status": {"$in": ["assigned", "picked_up", "on_the_way", "arrived"]},
@@ -6016,7 +6273,407 @@ async def health_web_bundle():
         "frontend_source_shipped": (ROOT_DIR.parent / "frontend" / "package.json").exists(),
         "npx_available": _sh.which("npx") is not None,
         "yarn_available": _sh.which("yarn") is not None,
+        "committed_marker": _read_web_marker(),
+        "current_source_hash": (_frontend_source_hash() or None),
+        "bundle_matches_source": (_read_web_marker() is not None and _read_web_marker() == _frontend_source_hash()),
     }
+
+
+# ==========================================================
+# REVIEWS — post-delivery item ratings (token link, moderated)
+# ==========================================================
+import csv as _csv
+import io as _io
+
+
+async def _ratings_map(item_ids: List[str]) -> Dict[str, dict]:
+    """Return {item_id: {avg_rating, review_count}} over APPROVED reviews only."""
+    ids = [i for i in (item_ids or []) if i]
+    if not ids:
+        return {}
+    out: Dict[str, dict] = {}
+    try:
+        pipeline = [
+            {"$match": {"item_id": {"$in": ids}, "status": "approved"}},
+            {"$group": {"_id": "$item_id", "avg": {"$avg": "$rating"}, "count": {"$sum": 1}}},
+        ]
+        async for row in db.reviews.aggregate(pipeline):
+            out[row["_id"]] = {
+                "avg_rating": round(float(row["avg"]), 1),
+                "review_count": int(row["count"]),
+            }
+    except Exception as e:
+        log.warning(f"[review.ratings_map] {e}")
+    return out
+
+
+async def _attach_ratings(items: List[dict]):
+    """Mutate menu item dicts to carry avg_rating + review_count (0 if none)."""
+    if not items:
+        return items
+    rmap = await _ratings_map([it.get("item_id") for it in items])
+    for it in items:
+        r = rmap.get(it.get("item_id"))
+        it["avg_rating"] = r["avg_rating"] if r else 0
+        it["review_count"] = r["review_count"] if r else 0
+    return items
+
+
+def _reviewable_items_from_order(order: dict) -> List[dict]:
+    """Distinct dishes a customer can review from an order snapshot.
+    Menu lines → the dish itself; weekly-package → each picked master dish."""
+    seen: Dict[str, dict] = {}
+    for it in order.get("items_snapshot", []) or []:
+        kind = it.get("kind")
+        if kind == "menu":
+            iid = it.get("ref_id")
+            if iid:
+                seen.setdefault(iid, {"item_id": iid, "name": it.get("name")})
+        elif kind == "weekly_package":
+            for mid in (it.get("package_selection_ids") or []):
+                if mid:
+                    seen.setdefault(mid, {"item_id": mid, "name": None})
+    return list(seen.values())
+
+
+async def _review_items_payload(order: dict) -> List[dict]:
+    """Reviewable items enriched with name + image from the master menu."""
+    base = _reviewable_items_from_order(order)
+    need = [b["item_id"] for b in base]
+    master: Dict[str, dict] = {}
+    if need:
+        async for m in db.master_menu.find(
+            {"item_id": {"$in": need}}, {"_id": 0, "item_id": 1, "name": 1, "image_url": 1}
+        ):
+            master[m["item_id"]] = m
+    out = []
+    for b in base:
+        m = master.get(b["item_id"], {})
+        out.append({
+            "item_id": b["item_id"],
+            "name": b.get("name") or m.get("name") or b["item_id"],
+            "image_url": m.get("image_url", ""),
+        })
+    return out
+
+
+async def _send_review_request(rr: dict, settings: dict):
+    """Deliver a review-request link to the customer (Email + SMS). Best-effort."""
+    try:
+        token = rr.get("token")
+        base = _order_base({"public_base_url": rr.get("public_base_url")})
+        link = f"{base}/review/{token}" if base else f"/review/{token}"
+        cn = (rr.get("customer_name") or "").strip()
+        first = cn.split()[0] if cn else "there"
+
+        # ---- Email ----
+        try:
+            email = rr.get("email") or ""
+            if not email and rr.get("user_id"):
+                udoc = await db.users.find_one({"user_id": rr["user_id"]}, {"_id": 0, "email": 1})
+                if udoc:
+                    email = udoc.get("email") or ""
+            if email and not email.endswith(BRAND_GUEST_DOMAIN) and _email.is_configured():
+                html = (
+                    f"<p>Hi {_html.escape(first)},</p>"
+                    f"<p>Thanks for ordering from {_html.escape(BRAND_NAME)}! We'd love to know how "
+                    "your dishes turned out.</p>"
+                    f"<p><a href='{link}' style='background:#3C053C;color:#fff;padding:12px 22px;"
+                    "border-radius:24px;text-decoration:none;font-weight:800'>Rate your order</a></p>"
+                    "<p>It only takes a few seconds — no login needed.</p>"
+                    f"<p>Warmly,<br/>The {_html.escape(BRAND_NAME)} team</p>"
+                )
+                await _email.send_email(to=email, subject=f"How was your {BRAND_NAME} order?", html=html)
+        except Exception as e:
+            log.warning(f"[review.send.email] {e}")
+
+        # ---- SMS ----
+        try:
+            phone = rr.get("phone") or ""
+            if phone:
+                body = f"{BRAND_NAME}: Thanks for your order! Tell us how it was (10s, no login): {link}"
+                await _send_sms_via_settings(settings, phone, body)
+        except Exception as e:
+            log.warning(f"[review.send.sms] {e}")
+
+        await db.review_requests.update_one(
+            {"order_id": rr["order_id"]},
+            {"$set": {"status": "sent", "sent_at": datetime.now(timezone.utc)}},
+        )
+        log.info(f"[review.send] request sent for order {rr.get('order_id')}")
+    except Exception as e:
+        log.warning(f"[review.send] {e}")
+
+
+_review_sweep_lock = asyncio.Lock()
+
+
+async def _sweep_due_review_requests():
+    """Send any scheduled review requests whose send_after has passed."""
+    try:
+        settings = await _get_settings()
+        if not settings.get("reviews_enabled", True):
+            return
+        now = datetime.now(timezone.utc)
+        async with _review_sweep_lock:
+            due = await db.review_requests.find(
+                {"status": "scheduled", "send_after": {"$lte": now}}, {"_id": 0}
+            ).to_list(200)
+            for rr in due:
+                await _send_review_request(rr, settings)
+    except Exception as e:
+        log.warning(f"[review.sweep] {e}")
+
+
+async def _schedule_review_request(order: dict):
+    """Create/refresh a review-request token for a delivered order + trigger a
+    send-sweep (sends immediately when the configured delay is 0). Idempotent."""
+    try:
+        settings = await _get_settings()
+        if not settings.get("reviews_enabled", True):
+            return
+        oid = order.get("order_id")
+        if not oid:
+            return
+        existing = await db.review_requests.find_one({"order_id": oid}, {"_id": 0})
+        if existing and existing.get("status") in ("sent", "submitted"):
+            return  # already handled — don't re-notify or reset
+        items = await _review_items_payload(order)
+        if not items:
+            return
+        now = datetime.now(timezone.utc)
+        delay = max(0, int(settings.get("review_request_delay_days", 1) or 0))
+        token = existing.get("token") if existing else _secrets.token_urlsafe(24)
+        await db.review_requests.update_one(
+            {"order_id": oid},
+            {"$set": {
+                "token": token, "order_id": oid, "user_id": order.get("user_id") or "",
+                "items": items, "send_after": now + timedelta(days=delay), "status": "scheduled",
+                "customer_name": (order.get("address") or {}).get("name") or "",
+                "phone": order.get("phone") or "",
+                "email": (order.get("address") or {}).get("email") or "",
+                "public_base_url": order.get("public_base_url") or "",
+                "created_at": (existing or {}).get("created_at") or now,
+            }},
+            upsert=True,
+        )
+        asyncio.create_task(_sweep_due_review_requests())
+    except Exception as e:
+        log.warning(f"[review.schedule] {e}")
+
+
+async def _review_sweep_loop():
+    """Periodic background sweep — sends review requests once their delay elapses."""
+    while True:
+        try:
+            await _sweep_due_review_requests()
+        except Exception:
+            pass
+        await asyncio.sleep(300)
+
+
+# ---------------- Public review endpoints (token-gated, no login) ----------------
+@api.get("/reviews/request/{token}")
+async def get_review_request(token: str):
+    rr = await db.review_requests.find_one({"token": token}, {"_id": 0})
+    if not rr:
+        raise HTTPException(404, "This review link is invalid or has expired.")
+    return {
+        "business_name": BRAND_NAME,
+        "customer_name": rr.get("customer_name") or "",
+        "items": rr.get("items", []),
+        "already_submitted": rr.get("status") == "submitted",
+    }
+
+
+class ReviewItemIn(BaseModel):
+    item_id: str
+    rating: int = Field(ge=1, le=5)
+    comment: Optional[str] = ""
+
+
+class ReviewSubmitReq(BaseModel):
+    token: str
+    reviews: List[ReviewItemIn]
+
+
+@api.post("/reviews/submit")
+async def submit_reviews(req: ReviewSubmitReq):
+    rr = await db.review_requests.find_one({"token": req.token}, {"_id": 0})
+    if not rr:
+        raise HTTPException(404, "This review link is invalid or has expired.")
+    # Idempotent + moderation-blind: the customer always sees "posted".
+    if rr.get("status") == "submitted":
+        return {"ok": True, "message": "Thanks! Your review has been posted."}
+    now = datetime.now(timezone.utc)
+    names = {i["item_id"]: i.get("name") for i in rr.get("items", [])}
+    valid = set(names.keys())
+    docs = []
+    for rv in req.reviews:
+        if rv.item_id not in valid:
+            continue
+        docs.append({
+            "review_id": f"rev_{uuid.uuid4().hex[:10]}",
+            "order_id": rr.get("order_id"),
+            "user_id": rr.get("user_id"),
+            "item_id": rv.item_id,
+            "item_name": names.get(rv.item_id) or rv.item_id,
+            "rating": int(rv.rating),
+            "comment": (rv.comment or "").strip()[:1000],
+            "customer_name": rr.get("customer_name") or "Verified customer",
+            "status": "pending",   # MODERATION — hidden until an admin approves
+            "source": "customer",
+            "created_at": now,
+        })
+    if docs:
+        await db.reviews.insert_many(docs)
+    await db.review_requests.update_one(
+        {"token": req.token}, {"$set": {"status": "submitted", "submitted_at": now}}
+    )
+    return {"ok": True, "message": "Thanks! Your review has been posted."}
+
+
+@api.get("/menu-items/{item_id}/reviews")
+async def item_reviews(item_id: str):
+    summary = (await _ratings_map([item_id])).get(item_id, {"avg_rating": 0, "review_count": 0})
+    rows = await db.reviews.find(
+        {"item_id": item_id, "status": "approved"},
+        {"_id": 0, "review_id": 1, "rating": 1, "comment": 1, "customer_name": 1, "created_at": 1},
+    ).sort("created_at", -1).to_list(300)
+    return {"item_id": item_id, **summary, "reviews": rows}
+
+
+@api.get("/reviews/summary")
+async def reviews_summary(item_ids: str):
+    ids = [i for i in (item_ids or "").split(",") if i]
+    return {"ratings": await _ratings_map(ids)}
+
+
+# ---------------- Admin review moderation + bulk upload ----------------
+@api.get("/admin/reviews")
+async def admin_list_reviews(status: str = "pending", admin=Depends(_current_admin)):
+    q: dict = {}
+    if status in ("pending", "approved", "rejected"):
+        q["status"] = status
+    rows = await db.reviews.find(q, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    counts = {}
+    for st in ("pending", "approved", "rejected"):
+        counts[st] = await db.reviews.count_documents({"status": st})
+    return {"reviews": rows, "counts": counts}
+
+
+class ReviewModerateReq(BaseModel):
+    action: str  # "approve" | "reject"
+
+
+@api.post("/admin/reviews/{review_id}/moderate")
+async def admin_moderate_review(review_id: str, req: ReviewModerateReq, admin=Depends(_current_admin)):
+    if req.action not in ("approve", "reject"):
+        raise HTTPException(400, "action must be 'approve' or 'reject'")
+    new_status = "approved" if req.action == "approve" else "rejected"
+    r = await db.reviews.update_one(
+        {"review_id": review_id},
+        {"$set": {"status": new_status, "moderated_at": datetime.now(timezone.utc)}},
+    )
+    if r.matched_count == 0:
+        raise HTTPException(404, "Review not found")
+    return {"ok": True, "status": new_status}
+
+
+@api.delete("/admin/reviews/{review_id}")
+async def admin_delete_review(review_id: str, admin=Depends(_current_admin)):
+    r = await db.reviews.delete_one({"review_id": review_id})
+    if r.deleted_count == 0:
+        raise HTTPException(404, "Review not found")
+    return {"ok": True}
+
+
+@api.post("/admin/reviews/bulk-upload")
+async def admin_bulk_upload_reviews(file: UploadFile = File(...), admin=Depends(_current_admin)):
+    """Bulk-import historical reviews from a CSV. Header row required. Columns:
+    item_id OR item_name, rating (1-5), comment, customer_name, created_at(optional).
+    Imported reviews are APPROVED immediately (source=admin_bulk)."""
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except Exception:
+        text = raw.decode("latin-1", errors="ignore")
+    reader = _csv.DictReader(_io.StringIO(text))
+    # master menu lookups (name→id and id→name)
+    name_to_id: Dict[str, str] = {}
+    id_to_name: Dict[str, str] = {}
+    async for m in db.master_menu.find({}, {"_id": 0, "item_id": 1, "name": 1}):
+        id_to_name[m["item_id"]] = m.get("name") or m["item_id"]
+        name_to_id[(m.get("name") or "").strip().lower()] = m["item_id"]
+    now = datetime.now(timezone.utc)
+    docs = []
+    errors: List[str] = []
+    for idx, row in enumerate(reader, start=2):
+        row = {(k or "").strip().lower(): (v or "").strip() for k, v in row.items()}
+        iid = row.get("item_id") or ""
+        iname = row.get("item_name") or row.get("name") or ""
+        if not iid and iname:
+            iid = name_to_id.get(iname.lower(), "")
+        if not iid or iid not in id_to_name:
+            errors.append(f"Row {idx}: unknown item '{iname or row.get('item_id') or '?'}'")
+            continue
+        try:
+            rating = int(float(row.get("rating") or 0))
+        except ValueError:
+            rating = 0
+        if not (1 <= rating <= 5):
+            errors.append(f"Row {idx}: rating must be 1-5")
+            continue
+        docs.append({
+            "review_id": f"rev_{uuid.uuid4().hex[:10]}",
+            "order_id": None, "user_id": None,
+            "item_id": iid,
+            "item_name": iname or id_to_name.get(iid, iid),
+            "rating": rating,
+            "comment": (row.get("comment") or "")[:1000],
+            "customer_name": row.get("customer_name") or "Customer",
+            "status": "approved",   # historical reviews go live immediately
+            "source": "admin_bulk",
+            "created_at": now,
+        })
+    if docs:
+        await db.reviews.insert_many(docs)
+    return {"ok": True, "inserted": len(docs), "error_count": len(errors), "errors": errors[:50]}
+
+
+@api.get("/api-reference")
+async def api_reference_page():
+    """Human-readable, rendered API reference (Markdown → HTML via marked.js)."""
+    from fastapi.responses import HTMLResponse
+    import json as _json
+    try:
+        md = (Path(__file__).resolve().parent / "API_REFERENCE.md").read_text(encoding="utf-8")
+    except Exception:
+        md = "# API Reference\n\nReference file not found."
+    md_js = _json.dumps(md)
+    html = """<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Bong Hneshel — API Reference</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.1/github-markdown-light.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  body{margin:0;background:#faf7fb}
+  .wrap{max-width:900px;margin:0 auto;padding:32px 20px 80px}
+  .markdown-body{box-sizing:border-box}
+  .markdown-body table{display:table;width:100%}
+  .topbar{background:#3C053C;color:#fff;padding:16px 20px;font-weight:800;font-size:18px}
+</style></head>
+<body>
+<div class="topbar">🍛 Bong Hneshel — API Reference</div>
+<div class="wrap"><article id="content" class="markdown-body"></article></div>
+<script>
+  const md = __MD_JSON__;
+  document.getElementById('content').innerHTML = marked.parse(md);
+</script>
+</body></html>""".replace("__MD_JSON__", md_js)
+    return HTMLResponse(content=html)
+
 
 
 # --- Register router
@@ -6128,6 +6785,142 @@ def _try_build_web_bundle() -> bool:
 
 # Fire the build check ONCE at module import.
 _try_build_web_bundle()
+
+
+# ---------------------------------------------------------------
+# FRESHNESS GUARANTEE
+# The committed /app/backend/web_dist/ bundle can go stale relative to the
+# frontend source that ships in the image. To make sure production ALWAYS
+# serves the latest code after a publish, we fingerprint the frontend source
+# (app/ + src/ + config) and rebuild the bundle in the background whenever the
+# committed bundle's marker doesn't match. This also keeps the committed bundle
+# continuously fresh in preview (every backend restart after a frontend change
+# re-mirrors it), so whatever the user publishes is up to date.
+# ---------------------------------------------------------------
+_WEB_SOURCE_MARKER = _WEB_DIST_PROD / ".source_hash"
+
+
+def _frontend_source_hash() -> Optional[str]:
+    root = Path("/app/frontend")
+    if not (root / "package.json").exists():
+        return None
+    h = hashlib.sha256()
+    targets: list = []
+    for d in ("app", "src"):
+        dp = root / d
+        if dp.exists():
+            targets += [p for p in dp.rglob("*") if p.is_file() and "node_modules" not in p.parts]
+    for f in ("app.config.js", "brand.config.js", "package.json"):
+        fp = root / f
+        if fp.exists():
+            targets.append(fp)
+    for p in sorted(targets, key=lambda x: str(x)):
+        try:
+            h.update(str(p.relative_to(root)).encode())
+            h.update(p.read_bytes())
+        except Exception:
+            pass
+    return h.hexdigest()
+
+
+def _read_web_marker() -> Optional[str]:
+    try:
+        return _WEB_SOURCE_MARKER.read_text().strip() if _WEB_SOURCE_MARKER.exists() else None
+    except Exception:
+        return None
+
+
+def _write_web_marker(value: str) -> None:
+    try:
+        _WEB_DIST_PROD.mkdir(parents=True, exist_ok=True)
+        _WEB_SOURCE_MARKER.write_text(value)
+    except Exception as e:
+        log.warning(f"[web-build] marker write failed: {e}")
+
+
+def _do_web_export_and_mirror(timeout: int = 300) -> bool:
+    """Export the Expo web bundle from /app/frontend and mirror it into the
+    prod dir with an atomic-ish swap. Best-effort; returns True on success."""
+    import subprocess, shutil
+    frontend_dir = Path("/app/frontend")
+    if not (frontend_dir / "package.json").exists():
+        return False
+    yarn = shutil.which("yarn")
+    npx = shutil.which("npx") or shutil.which("npm")
+    if not (frontend_dir / "node_modules").exists() and yarn:
+        try:
+            subprocess.run(
+                [yarn, "install", "--frozen-lockfile", "--production=false"],
+                cwd=str(frontend_dir), timeout=300, check=False,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                env={**os.environ, "CI": "1", "SKIP_PREINSTALL_GUARD": "1"},
+            )
+        except Exception as e:
+            log.warning(f"[web-build] yarn install failed: {e}")
+    tool = yarn or npx
+    if not tool:
+        return False
+    cmd = ([tool, "run", "build:web"] if tool.endswith("yarn")
+           else [tool, "expo", "export", "--platform", "web", "--output-dir", "dist"])
+    try:
+        proc = subprocess.run(
+            cmd, cwd=str(frontend_dir), timeout=timeout, check=False,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env={**os.environ, "APP_VARIANT": os.environ.get("APP_VARIANT", "customer"), "CI": "1"},
+        )
+        log.info(f"[web-build] export exit={proc.returncode}")
+    except Exception as e:
+        log.error(f"[web-build] export failed: {e}")
+        return False
+    if not (_WEB_DIST_PREVIEW / "index.html").exists():
+        return False
+    try:
+        parent = _WEB_DIST_PROD.parent
+        tmp = parent / "web_dist.new"
+        old = parent / "web_dist.old"
+        if tmp.exists():
+            shutil.rmtree(tmp)
+        shutil.copytree(_WEB_DIST_PREVIEW, tmp)
+        if old.exists():
+            shutil.rmtree(old)
+        if _WEB_DIST_PROD.exists():
+            os.replace(str(_WEB_DIST_PROD), str(old))
+        os.replace(str(tmp), str(_WEB_DIST_PROD))
+        if old.exists():
+            shutil.rmtree(old)
+        log.info(f"[web-build] mirrored fresh bundle -> {_WEB_DIST_PROD}")
+        return True
+    except Exception as e:
+        log.warning(f"[web-build] mirror failed: {e}")
+        return False
+
+
+def _maybe_schedule_web_refresh() -> None:
+    """Rebuild the bundle in the background if it's stale vs the frontend source."""
+    try:
+        src = _frontend_source_hash()
+        if not src:
+            log.info("[web-build] no frontend source in container — serving committed bundle as-is")
+            return
+        if _read_web_marker() == src and (_WEB_DIST_PROD / "index.html").exists():
+            log.info("[web-build] bundle matches source fingerprint — no rebuild needed")
+            return
+        log.info("[web-build] bundle stale/unmarked vs source — scheduling background rebuild")
+        import threading
+
+        def _bg():
+            if _do_web_export_and_mirror():
+                _write_web_marker(src)
+                log.info("[web-build] background refresh complete — production is now on latest code")
+            else:
+                log.warning("[web-build] background refresh failed; keeping existing committed bundle")
+
+        threading.Thread(target=_bg, daemon=True).start()
+    except Exception as e:
+        log.warning(f"[web-build] refresh scheduling error: {e}")
+
+
+_maybe_schedule_web_refresh()
 
 WEB_DIST = _resolve_web_dist() or _WEB_DIST_PROD  # re-resolve after build
 _WEB_DIST_PRESENT = _resolve_web_dist() is not None
@@ -6281,6 +7074,13 @@ async def _startup():
         await db.master_menu.create_index("item_id", unique=True)
         await db.master_menu.create_index([("category", 1), ("cuisine", 1)])
         await db.business_settings.create_index("key", unique=True)
+        # Reviews + review-request tokens
+        await db.reviews.create_index("review_id", unique=True)
+        await db.reviews.create_index([("item_id", 1), ("status", 1)])
+        await db.reviews.create_index("status")
+        await db.review_requests.create_index("token", unique=True)
+        await db.review_requests.create_index("order_id", unique=True)
+        await db.review_requests.create_index([("status", 1), ("send_after", 1)])
         # Export download tokens: unique-token lookup only. Expiration is
         # enforced LAZILY on read/create instead of via a MongoDB TTL — this
         # keeps startup non-destructive (no auto-hard-delete of user data by
@@ -6340,6 +7140,12 @@ async def _startup():
         start_platform_poller()
     except Exception as _plat_err:
         log.warning(f"platform poller start skipped: {_plat_err}")
+
+    # Background sweep: send review-request links once their delay elapses.
+    try:
+        asyncio.create_task(_review_sweep_loop())
+    except Exception as _rev_err:
+        log.warning(f"review sweep start skipped: {_rev_err}")
 
 
 @app.on_event("shutdown")

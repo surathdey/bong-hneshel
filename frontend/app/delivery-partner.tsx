@@ -396,25 +396,48 @@ function RoutePlanner({ orders, onStatus, onRefresh }: { orders: Order[]; onStat
     return { lat: r.data.lat, lng: r.data.lng };
   };
 
-  const useCurrent = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      notify("Not available", "Geolocation isn't supported here — please type your address instead.");
-      return;
-    }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async pos => {
-        const { latitude, longitude } = pos.coords;
-        setOriginLat(latitude);
-        setOriginLng(longitude);
-        const r = await deliveryApi.post<{ formatted: string }>("/delivery/reverse-geocode", { lat: latitude, lng: longitude });
-        if (r.ok && r.data) { setAddress(r.data.formatted); setResolvedAddress(r.data.formatted); }
-        else setAddress(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+  const useCurrent = async () => {
+    try {
+      setLocating(true);
+      // Check existing permission first, then request contextually if needed.
+      let perm = await Location.getForegroundPermissionsAsync();
+      if (perm.status !== "granted") {
+        perm = await Location.requestForegroundPermissionsAsync();
+      }
+      if (perm.status !== "granted") {
         setLocating(false);
-      },
-      err => { setLocating(false); notify("Location error", err.message); },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
+        if (!perm.canAskAgain) {
+          Alert.alert(
+            "Location permission needed",
+            "To use your current location, enable Location access for this app in Settings.",
+            [
+              { text: "Not now", style: "cancel" },
+              { text: "Open Settings", onPress: () => Linking.openSettings() },
+            ],
+          );
+        } else {
+          notify("Location permission needed", "Please allow location access, or type the start address instead.");
+        }
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const { latitude, longitude } = pos.coords;
+      setOriginLat(latitude);
+      setOriginLng(longitude);
+      const r = await deliveryApi.post<{ formatted: string }>("/delivery/reverse-geocode", { lat: latitude, lng: longitude });
+      if (r.ok && r.data?.formatted) {
+        setAddress(r.data.formatted);
+        setResolvedAddress(r.data.formatted);
+      } else {
+        const s = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+        setAddress(s);
+        setResolvedAddress(s);
+      }
+      setLocating(false);
+    } catch (e: any) {
+      setLocating(false);
+      notify("Location error", e?.message || "Could not get your location. Please type the address instead.");
+    }
   };
 
   const runRoute = async (lat: number, lng: number, opts: { order_ids?: string[]; optimize?: boolean } = {}) => {
@@ -630,7 +653,7 @@ function RoutePlanner({ orders, onStatus, onRefresh }: { orders: Order[]; onStat
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 + insets.bottom, gap: spacing.md }}>
+    <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 + insets.bottom, gap: spacing.md }} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Start location</Text>
         <Text style={styles.hint}>{"Type your restaurant / start address — pick a suggestion for the fastest setup."}</Text>

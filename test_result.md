@@ -103,55 +103,104 @@
 #====================================================================================================
 
 user_problem_statement: |
-  Deploy Curry & Co. Admin webapp to production. Emergent's mobile-build pipeline only
-  ships /app/backend/ — not /app/frontend/dist/ — so /admin was returning 404 in
-  production even after multiple redeploys.
+  Review Management System for Bong Hneshel food-delivery app. After an order is
+  delivered, the customer is texted + emailed a token-gated link (no login) to rate
+  the exact dishes they ordered (1-5 stars + optional comment). The delay before the
+  link is sent is configurable in Admin -> Settings (default 1 day). Submitted reviews
+  land in an admin moderation queue (the customer is NOT told; they see "posted").
+  Only admin-approved reviews appear publicly on menu items. Admin can bulk-upload
+  historical reviews via CSV (go live immediately).
 
 backend:
-  - task: "Ship Expo web bundle from /app/backend/web_dist/ so it lives inside the backend image"
+  - task: "Reviews backend: token request, submit (moderated), item reviews, summary, ratings on menu"
     implemented: true
     working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: true
-        agent: "testing"
-        comment: "Iteration 17 — 9/9 tests PASS including production simulation (moved /app/frontend away, /admin still returned 200 HTML served from /app/backend/web_dist)."
+        agent: "main"
+        comment: "Added db.reviews + db.review_requests, delivery-triggered scheduling (_schedule_review_request on both delivery-partner and admin delivered hooks), background sweep loop, token endpoints GET /reviews/request/{token} + POST /reviews/submit (status=pending), GET /menu-items/{id}/reviews (approved only), GET /reviews/summary. Menu endpoints (_hydrate_menu, /menu/anytime) now carry avg_rating+review_count. Verified via tests/test_reviews_smoke.py: request->submit->pending hidden->admin approve->public visible->summary->CSV bulk upload all PASS."
 
-  - task: "Root /health, /healthz endpoints for K8s liveness probes"
+  - task: "Admin review moderation + CSV bulk upload"
     implemented: true
     working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "GET /admin/reviews?status=, POST /admin/reviews/{id}/moderate (approve|reject), DELETE /admin/reviews/{id}, POST /admin/reviews/bulk-upload (CSV: item_id/item_name,rating,comment,customer_name -> approved, source=admin_bulk). All admin-gated. Smoke test PASS."
 
-  - task: "SPA catch-all + /_expo, /assets static mounts for admin/customer web routes"
-    implemented: true
-    working: true
-    file: "backend/server.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-
-  - task: "/api/health/web-bundle diagnostic endpoint"
+  - task: "Settings: reviews_enabled + review_request_delay_days"
     implemented: true
     working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: false
+    needs_retesting: true
+
+frontend:
+  - task: "Public token-gated review page /review/[token]"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/review/[token].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "No-login page: shows dishes with images, 1-5 star selector + optional comment per dish, submit -> success screen ('Thanks! Your review has been posted'). Idempotent/already-submitted shows success. Screenshot smoke test confirms render."
+
+  - task: "Admin Reviews page (moderation queue + CSV bulk upload)"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/admin/reviews.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Pending/Approved/Rejected tabs with counts, approve/reject/delete, CSV bulk upload via expo-document-picker (multipart fetch). Added to AdminShell nav + admin/_layout."
+
+  - task: "Customer menu: rating badge + reviews modal"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/(tabs)/menu.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "A la carte + Always Available rows show a star rating pill + 'See reviews' when review_count>0, opening ReviewsModal that lists approved reviews. src/components/ItemReviews.tsx."
+
+  - task: "Admin Settings: Reviews section (toggle + delay days)"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/admin/settings.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
 
 metadata:
   created_by: "main_agent"
-  version: "1.7"
+  version: "1.8"
   test_sequence: 17
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "Reviews backend: token request, submit (moderated), item reviews, summary, ratings on menu"
+    - "Admin review moderation + CSV bulk upload"
+    - "Public token-gated review page /review/[token]"
+    - "Admin Reviews page (moderation queue + CSV bulk upload)"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -159,13 +208,29 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: |
-      After several deploy iterations, root cause confirmed: Emergent production
-      container only ships /app/backend/. The final fix moves the pre-built Expo
-      web bundle into /app/backend/web_dist/ so it lives inside the backend image
-      and is served regardless of whether the frontend directory is copied. Also
-      added /api/health/web-bundle diagnostic endpoint for future debugging.
-  - agent: "testing"
-    message: |
-      Iteration 17 — 9/9 tests pass. Critical prod simulation (move /app/frontend
-      away, restart backend) confirms /admin still returns 200 HTML from
-      /app/backend/web_dist. Fix is ready for production redeploy.
+      Implemented the Review Management System (backend + frontend). Please test:
+      BACKEND (high priority):
+       1. Full review lifecycle: seed a review_request doc (or mark an order delivered
+          via POST /api/delivery/orders/{id}/status status=delivered with a delivery
+          partner, or admin POST /api/orders/{id}/status status=delivered) -> a
+          review_request is created. GET /api/reviews/request/{token} returns items.
+          POST /api/reviews/submit {token, reviews:[{item_id,rating,comment}]} ->
+          reviews stored as status=pending, customer gets generic success. Re-submit
+          is idempotent (still success).
+       2. Moderation hides reviews: GET /api/menu-items/{item_id}/reviews must NOT
+          include pending reviews. After POST /api/admin/reviews/{id}/moderate
+          {action:approve}, the review appears and avg_rating/review_count update.
+          reject/delete also work. All /admin/reviews* require admin bearer token
+          (401 without).
+       3. CSV bulk upload: POST /api/admin/reviews/bulk-upload (multipart file) with
+          columns item_id(or item_name),rating,comment,customer_name -> inserted as
+          approved; unknown items/invalid ratings reported in errors[].
+       4. Menu ratings: GET /api/menu/current items + GET /api/menu/anytime items now
+          include avg_rating + review_count.
+      Admin creds in /app/memory/test_credentials.md (admin@bong-hneshel.ca).
+      Admin login: POST /api/admin/login {email,password} -> token.
+      NOTE: Do NOT run end-to-end Stripe checkout (LIVE key in .env). Use existing
+      delivered orders or seed review_requests directly for the flow.
+      FRONTEND: /review/{token} public page (no login), Admin -> Reviews page
+      (moderation + CSV upload), customer Menu tab rating pill + reviews modal,
+      Admin -> Settings Reviews section (toggle + delay days).

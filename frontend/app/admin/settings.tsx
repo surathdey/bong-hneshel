@@ -36,6 +36,8 @@ type Settings = {
   referral_reward_points?: number;
   referral_friend_discount_type?: string;
   referral_friend_discount_value?: number;
+  reviews_enabled?: boolean;
+  review_request_delay_days?: number;
   home_hero_tagline?: string;
   notify_email?: string;
   notify_phone?: string;
@@ -68,6 +70,7 @@ export default function AdminSettings() {
   const [redeemStr, setRedeemStr] = useState("100");
   const [refPointsStr, setRefPointsStr] = useState("100");
   const [refDiscStr, setRefDiscStr] = useState("10");
+  const [reviewDelayStr, setReviewDelayStr] = useState("1");
 
   const load = useCallback(async () => {
     const r = await adminApi.get<Settings>("/admin/settings");
@@ -109,6 +112,8 @@ export default function AdminSettings() {
           ? ((r.data.referral_friend_discount_value ?? 0) / 100).toFixed(2)
           : String(r.data.referral_friend_discount_value ?? 10)
       );
+      if (typeof r.data.reviews_enabled !== "boolean") r.data.reviews_enabled = true;
+      setReviewDelayStr(String(r.data.review_request_delay_days ?? 1));
     }
     setLoading(false);
   }, [router]);
@@ -138,6 +143,7 @@ export default function AdminSettings() {
       referral_friend_discount_value: s.referral_friend_discount_type === "fixed"
         ? Math.max(0, Math.round((parseFloat(refDiscStr) || 0) * 100))
         : Math.max(0, Math.round(parseFloat(refDiscStr) || 0)),
+      review_request_delay_days: Math.max(0, Math.round(parseFloat(reviewDelayStr) || 0)),
     };
     const r = await adminApi.put("/admin/settings", body);
     setSaving(false);
@@ -376,6 +382,29 @@ export default function AdminSettings() {
             />
             <Text style={styles.toggleSub}>
               {`Referrer gets ${refPointsStr || "0"} points; the invited friend gets ${s.referral_friend_discount_type === "fixed" ? `$${refDiscStr || "0"}` : `${refDiscStr || "0"}%`} off their first order.`}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Reviews</Text>
+        <TouchableOpacity
+          testID="set-reviews-toggle"
+          style={[styles.toggleRow, s.reviews_enabled && styles.toggleRowActive]}
+          onPress={() => setS({ ...s, reviews_enabled: !s.reviews_enabled })}
+        >
+          <Ionicons name={s.reviews_enabled ? "toggle" : "toggle-outline"} size={30} color={s.reviews_enabled ? colors.success : colors.textMuted} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.toggleTitle}>Review requests {s.reviews_enabled ? "enabled" : "disabled"}</Text>
+            <Text style={styles.toggleSub}>After delivery, customers get a text + email link to rate the dishes they ordered. Reviews appear once you approve them.</Text>
+          </View>
+        </TouchableOpacity>
+        {s.reviews_enabled && (
+          <View style={{ marginTop: spacing.sm }}>
+            <Field label="Send review request (days after delivery)" testID="set-review-delay" value={reviewDelayStr} onChange={setReviewDelayStr} keyboardType="number-pad" />
+            <Text style={styles.toggleSub}>
+              {`Set to 0 to text the review link right after delivery. Currently: ${reviewDelayStr || "0"} day(s) later.`}
             </Text>
           </View>
         )}
