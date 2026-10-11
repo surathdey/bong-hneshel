@@ -12,6 +12,7 @@ import os
 import asyncio
 import logging
 import html as _html
+import re
 import uuid
 import hashlib
 import httpx
@@ -41,6 +42,7 @@ from brand import (
     BRAND_DELIVERY_EMAIL, BRAND_REGION,
     as_dict as brand_as_dict,
 )
+SERVICE_ID = f"{re.sub(r'[^a-z0-9]+', '-', BRAND_NAME.lower()).strip('-')}-api"
 
 # --- Env
 mongo_url = os.environ["MONGO_URL"]
@@ -104,7 +106,7 @@ api = APIRouter(prefix="/api")
 # ----------------------------------------------------------------------
 @app.get("/health", include_in_schema=False)
 async def _health():
-    return {"status": "ok", "service": "curryco-api"}
+    return {"status": "ok", "service": SERVICE_ID}
 
 
 @app.get("/healthz", include_in_schema=False)
@@ -124,7 +126,7 @@ async def _root():
             "Pragma": "no-cache",
             "Expires": "0",
         })
-    return {"service": "curryco-api", "status": "ok", "docs": "/docs", "web_bundle": "missing"}
+    return {"service": SERVICE_ID, "status": "ok", "docs": "/docs", "web_bundle": "missing"}
 
 
 # --- Uploaded images (AI-generated menu photos, etc.) served under /api/uploads/*
