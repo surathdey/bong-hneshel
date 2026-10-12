@@ -7,6 +7,7 @@ on:
     paths:
       - 'backend/**'
       - 'brand.json'
+      - 'exports/privacy.html'
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
     inputs:
@@ -121,6 +122,10 @@ jobs:
             --exclude '.DS_Store' \
             --exclude '*.pyc' \
             backend/ ec2-deploy:/app/restaurant/bong-hneshel/backend/
+
+          test -f exports/privacy.html || { echo "❌ exports/privacy.html is required for the public privacy endpoint"; exit 1; }
+          ssh ec2-deploy "mkdir -p /app/restaurant/bong-hneshel/exports"
+          scp exports/privacy.html ec2-deploy:/app/restaurant/bong-hneshel/exports/privacy.html
 
           if [ -f brand.json ]; then
             scp brand.json ec2-deploy:/app/restaurant/bong-hneshel/
