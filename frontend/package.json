@@ -4,13 +4,13 @@
   "version": "1.0.0",
   "scripts": {
     "preinstall": "./scripts/cmd-guard.js --preinstall",
-    "start": "expo start",
+    "start": "node init && expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "build:web": "APP_VARIANT=customer expo export --platform web --output-dir dist",
+    "build:web": "node init && APP_VARIANT=customer expo export --platform web --output-dir dist",
     "postinstall": "APP_VARIANT=customer expo export --platform web --output-dir dist || echo '[postinstall] expo export skipped (non-fatal for local dev)'"
   },
   "dependencies": {
