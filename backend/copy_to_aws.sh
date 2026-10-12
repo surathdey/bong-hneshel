@@ -57,6 +57,19 @@ copy_config() {
 }
 
 # ------------------------------------------------------------------------------
+# Public legal assets served from the repository-level exports/ directory
+# ------------------------------------------------------------------------------
+copy_legal_assets() {
+  echo "⚖️  Copying public legal assets..."
+  if [ ! -f "../exports/privacy.html" ]; then
+    echo "❌ Required file ../exports/privacy.html is missing."
+    return 1
+  fi
+  ${SSH_CMD} "mkdir -p ${SERVER_ROOT_FOLDER}/exports"
+  ${SCP_CMD} ../exports/privacy.html ${USER}@${HOST}:${SERVER_ROOT_FOLDER}/exports/
+}
+
+# ------------------------------------------------------------------------------
 # 2. Core Backend Application & Client Modules
 # ------------------------------------------------------------------------------
 copy_backend_code() {
@@ -153,6 +166,7 @@ case "${TARGET}" in
   "all")
     ensure_remote_dirs
     copy_config
+    copy_legal_assets
     copy_backend_code
     copy_data_scripts
     copy_service_scripts
@@ -164,6 +178,7 @@ case "${TARGET}" in
   "backend")
     ensure_remote_dirs
     copy_config
+    copy_legal_assets
     copy_backend_code
     copy_data_scripts
     copy_service_scripts
